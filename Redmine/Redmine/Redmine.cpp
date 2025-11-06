@@ -19,7 +19,7 @@ void RedmineIssuesWidget::Draw(HDC hdc) {
 		CLEARTYPE_QUALITY, VARIABLE_PITCH, L"Segoe UI"
 	);
 	HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
-	DrawTextW(hdc, m_HeadLineText, -1, &m_TitleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+	DrawTextW(hdc, m_TitleText, -1, &m_TitleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
 	SelectObject(hdc, hOldFont);
 	DeleteObject(hFont);
 

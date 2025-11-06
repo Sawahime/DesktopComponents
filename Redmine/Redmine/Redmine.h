@@ -8,5 +8,5 @@ public:
 private:
 	RECT m_TitleRect = { 0 };
 	RECT m_IssuesRect = { 0 };
-	LPCWSTR m_HeadLineText = L"Redmine Issues";
+	LPCWSTR m_TitleText = L"Redmine Issues";
 };
