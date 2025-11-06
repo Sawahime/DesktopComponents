@@ -24,6 +24,7 @@ int APIENTRY wWinMain(
 	_In_ LPWSTR    lpCmdLine,
 	_In_ int       nCmdShow)
 {
+	FunctionEntryLog;
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -66,10 +67,10 @@ int APIENTRY wWinMain(
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-	WNDCLASSEXW wcex;
+	FunctionEntryLog;
 
+	WNDCLASSEXW wcex = { 0 };
 	wcex.cbSize = sizeof(WNDCLASSEX);
-
 	wcex.style = CS_HREDRAW | CS_VREDRAW;
 	wcex.lpfnWndProc = WndProc;
 	wcex.cbClsExtra = 0;
@@ -97,6 +98,8 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+	FunctionEntryLog;
+
 	hInst = hInstance; // 将实例句柄存储在全局变量中
 
 	// 获取主屏幕尺寸
@@ -119,6 +122,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		return FALSE;
 	}
 
+	RedmineIssuesWidget* redmine = new RedmineIssuesWidget();
+	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)redmine);
+
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -137,6 +143,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	//FunctionEntryLog;
+	RedmineIssuesWidget* redmine = (RedmineIssuesWidget*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
 	switch (message)
 	{
 	case WM_COMMAND:
@@ -158,9 +167,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_PAINT:
 	{
+		DebugPrint(L"message = WM_PAINT" << std::endl);
 		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hWnd, &ps);
-		// TODO: 在此处添加使用 hdc 的任何绘图代码...
+		HDC hdc = BeginPaint(hWnd, &ps);// Handle to Device Context
+		// 在此处添加使用 hdc 的任何绘图代码...
+		{
+			if (redmine) {
+				redmine->InitWindowRectArea(hWnd);
+				redmine->Draw(hdc);
+			}
+		}
 		EndPaint(hWnd, &ps);
 	}
 	break;
@@ -191,4 +207,36 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return (INT_PTR)FALSE;
+}
+
+
+void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
+	GetClientRect(hWnd, &m_TitleRect);
+	m_TitleRect.bottom /= 6;
+
+	GetClientRect(hWnd, &m_IssuesRect);
+	m_IssuesRect.top = m_TitleRect.bottom;
+}
+
+void RedmineIssuesWidget::Draw(HDC hdc) {
+	// Title
+	SetBkMode(hdc, TRANSPARENT);
+	SetTextColor(hdc, RGB(0, 0, 0));
+	HFONT hFont = CreateFontW(
+		36, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, VARIABLE_PITCH, L"Segoe UI"
+	);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+	DrawTextW(hdc, m_HeadLineText, -1, &m_TitleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hFont);
+
+	// Boundary
+	HPEN hPen = CreatePen(PS_SOLID, 2, RGB(200, 200, 200));
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+	MoveToEx(hdc, m_TitleRect.left + 10, m_TitleRect.bottom, nullptr);// move pan to (x,y)
+	LineTo(hdc, m_TitleRect.right - 10, m_TitleRect.bottom);// draw line from current position to target position
+	SelectObject(hdc, hOldPen);
+	DeleteObject(hPen);
 }
