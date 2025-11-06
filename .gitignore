@@ -1,0 +1,10 @@
+# User-specific files
+*.user
+*.sln
+.vs/
+
+# Build results
+x86/
+x64/
+Debug/
+Release/
