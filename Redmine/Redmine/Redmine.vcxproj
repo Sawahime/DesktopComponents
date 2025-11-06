@@ -124,12 +124,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
-    <ClInclude Include="Redmine.h" />
+    <ClInclude Include="main.h" />
+    <ClInclude Include="redmine.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Redmine.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="redmine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Redmine.rc" />
