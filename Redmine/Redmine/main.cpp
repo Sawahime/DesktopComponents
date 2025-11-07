@@ -1,13 +1,17 @@
-#include "framework.h"
+ï»¿#include "framework.h"
+
+#include <winhttp.h>
+#include <iostream>
+#pragma comment(lib, "winhttp.lib")
 
 #define MAX_LOADSTRING 100
 
-// È«¾Ö±äÁ¿:
-HINSTANCE hInst;                                // µ±Ç°ÊµÀı
-WCHAR szTitle[MAX_LOADSTRING];                  // ±êÌâÀ¸ÎÄ±¾
-WCHAR szWindowClass[MAX_LOADSTRING];            // Ö÷´°¿ÚÀàÃû
+// å…¨å±€å˜é‡:
+HINSTANCE hInst;                                // å½“å‰å®ä¾‹
+WCHAR szTitle[MAX_LOADSTRING];                  // æ ‡é¢˜æ æ–‡æœ¬
+WCHAR szWindowClass[MAX_LOADSTRING];            // ä¸»çª—å£ç±»å
 
-// ´Ë´úÂëÄ£¿éÖĞ°üº¬µÄº¯ÊıµÄÇ°ÏòÉùÃ÷:
+// æ­¤ä»£ç æ¨¡å—ä¸­åŒ…å«çš„å‡½æ•°çš„å‰å‘å£°æ˜:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -23,14 +27,24 @@ int APIENTRY wWinMain(
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	// TODO: ÔÚ´Ë´¦·ÅÖÃ´úÂë¡£
+	// TODO: åœ¨æ­¤å¤„æ”¾ç½®ä»£ç ã€‚
 
-	// ³õÊ¼»¯È«¾Ö×Ö·û´®
+	{
+		// åˆ†é…æ§åˆ¶å°
+		AllocConsole();
+
+		FILE* f;
+		freopen_s(&f, "CONOUT$", "w", stdout);
+
+		std::cout << "Hello from Windowsæ¡Œé¢ç¨‹åº!" << std::endl;
+	}
+
+	// åˆå§‹åŒ–å…¨å±€å­—ç¬¦ä¸²
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_REDMINE, szWindowClass, MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
 
-	// Ö´ĞĞÓ¦ÓÃ³ÌĞò³õÊ¼»¯:
+	// æ‰§è¡Œåº”ç”¨ç¨‹åºåˆå§‹åŒ–:
 	if (!InitInstance(hInstance, nCmdShow))
 	{
 		return FALSE;
@@ -40,7 +54,7 @@ int APIENTRY wWinMain(
 
 	MSG msg;
 
-	// Ö÷ÏûÏ¢Ñ­»·:
+	// ä¸»æ¶ˆæ¯å¾ªç¯:
 	while (GetMessage(&msg, nullptr, 0, 0))
 	{
 		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
@@ -56,9 +70,9 @@ int APIENTRY wWinMain(
 
 
 //
-//  º¯Êı: MyRegisterClass()
+//  å‡½æ•°: MyRegisterClass()
 //
-//  Ä¿±ê: ×¢²á´°¿ÚÀà¡£
+//  ç›®æ ‡: æ³¨å†Œçª—å£ç±»ã€‚
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
@@ -82,22 +96,22 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 }
 
 //
-//   º¯Êı: InitInstance(HINSTANCE, int)
+//   å‡½æ•°: InitInstance(HINSTANCE, int)
 //
-//   Ä¿±ê: ±£´æÊµÀı¾ä±ú²¢´´½¨Ö÷´°¿Ú
+//   ç›®æ ‡: ä¿å­˜å®ä¾‹å¥æŸ„å¹¶åˆ›å»ºä¸»çª—å£
 //
-//   ×¢ÊÍ:
+//   æ³¨é‡Š:
 //
-//        ÔÚ´Ëº¯ÊıÖĞ£¬ÎÒÃÇÔÚÈ«¾Ö±äÁ¿ÖĞ±£´æÊµÀı¾ä±ú²¢
-//        ´´½¨ºÍÏÔÊ¾Ö÷³ÌĞò´°¿Ú¡£
+//        åœ¨æ­¤å‡½æ•°ä¸­ï¼Œæˆ‘ä»¬åœ¨å…¨å±€å˜é‡ä¸­ä¿å­˜å®ä¾‹å¥æŸ„å¹¶
+//        åˆ›å»ºå’Œæ˜¾ç¤ºä¸»ç¨‹åºçª—å£ã€‚
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	FunctionEntryLog;
 
-	hInst = hInstance; // ½«ÊµÀı¾ä±ú´æ´¢ÔÚÈ«¾Ö±äÁ¿ÖĞ
+	hInst = hInstance; // å°†å®ä¾‹å¥æŸ„å­˜å‚¨åœ¨å…¨å±€å˜é‡ä¸­
 
-	// »ñÈ¡Ö÷ÆÁÄ»³ß´ç
+	// è·å–ä¸»å±å¹•å°ºå¯¸
 	int screenWidth = GetSystemMetrics(SM_CXFULLSCREEN);
 	int screenHeight = GetSystemMetrics(SM_CYFULLSCREEN);
 
@@ -127,13 +141,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 }
 
 //
-//  º¯Êı: WndProc(HWND, UINT, WPARAM, LPARAM)
+//  å‡½æ•°: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
-//  Ä¿±ê: ´¦ÀíÖ÷´°¿ÚµÄÏûÏ¢¡£
+//  ç›®æ ‡: å¤„ç†ä¸»çª—å£çš„æ¶ˆæ¯ã€‚
 //
-//  WM_COMMAND  - ´¦ÀíÓ¦ÓÃ³ÌĞò²Ëµ¥
-//  WM_PAINT    - »æÖÆÖ÷´°¿Ú
-//  WM_DESTROY  - ·¢ËÍÍË³öÏûÏ¢²¢·µ»Ø
+//  WM_COMMAND  - å¤„ç†åº”ç”¨ç¨‹åºèœå•
+//  WM_PAINT    - ç»˜åˆ¶ä¸»çª—å£
+//  WM_DESTROY  - å‘é€é€€å‡ºæ¶ˆæ¯å¹¶è¿”å›
 //
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -146,7 +160,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam);
-		// ·ÖÎö²Ëµ¥Ñ¡Ôñ:
+		// åˆ†æèœå•é€‰æ‹©:
 		switch (wmId)
 		{
 		case IDM_ABOUT:
@@ -165,26 +179,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		DebugPrint(L"message = WM_PAINT" << std::endl);
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);// Handle to Device Context
-		// ÔÚ´Ë´¦Ìí¼ÓÊ¹ÓÃ hdc µÄÈÎºÎ»æÍ¼´úÂë...
+		// åœ¨æ­¤å¤„æ·»åŠ ä½¿ç”¨ hdc çš„ä»»ä½•ç»˜å›¾ä»£ç ...
 		{
 			if (redmine) {
 				redmine->InitWindowRectArea(hWnd);
 				redmine->Draw(hdc);
+				redmine->RequestIssues();
 			}
 		}
 		EndPaint(hWnd, &ps);
 	}
 	break;
 	case WM_DESTROY:
+	{
 		PostQuitMessage(0);
-		break;
+	}
+	break;
+	case WM_CREATE:
+	{
+		DebugPrint(L"message = WM_CREATE" << std::endl);
+	}
+	break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return 0;
 }
 
-// ¡°¹ØÓÚ¡±¿òµÄÏûÏ¢´¦Àí³ÌĞò¡£
+// â€œå…³äºâ€æ¡†çš„æ¶ˆæ¯å¤„ç†ç¨‹åºã€‚
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UNREFERENCED_PARAMETER(lParam);

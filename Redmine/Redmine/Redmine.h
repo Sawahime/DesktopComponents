@@ -5,6 +5,11 @@ public:
 	void InitWindowRectArea(HWND hWnd);
 	void Draw(HDC hdc);
 
+	void RequestIssues();
+
+private:
+	std::string ParsePyDictValueByKey(PyObject* dict, const char* key);
+
 private:
 	RECT m_TitleRect = { 0 };
 	RECT m_IssuesRect = { 0 };

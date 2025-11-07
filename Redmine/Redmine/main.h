@@ -5,7 +5,7 @@
 #define DebugPrint(message) \
     do { \
         std::wstringstream ss; \
-        ss << L"[DEBUG] " << message; \
+        ss << message; \
         OutputDebugString(ss.str().c_str()); \
     } while(0)
 
