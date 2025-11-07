@@ -41,28 +41,264 @@ void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 }
 
 void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
-	//if (m_Issues.empty()) return;
-
 	// 设置issues区域的背景
 	HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(87, 192, 252));
 	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
 	DeleteObject(hBackgroundBrush);
 
-	// 计算每个issue的显示区域
-	int issueHeight = m_IssuesRect.bottom / 6; // 每个issue占1/6高度
-	int padding = 10;
+	if (m_IssuesList.empty()) return;
 
-	//for (size_t i = 0; i < m_Issues.size() && i < 6; i++) {
-	//	RECT issueRect = {
-	//		m_IssuesRect.left + padding,
-	//		m_IssuesRect.top + (int)i * issueHeight + padding,
-	//		m_IssuesRect.right - padding,
-	//		m_IssuesRect.top + (int)(i + 1) * issueHeight - padding
-	//	};
+	// 计算卡片尺寸和间距
+	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - 40; // 左右各留20px边距
+	int cardHeight = 120; // 每个卡片高度
+	int cardSpacing = 15; // 卡片之间的间距
+	int startY = m_IssuesRect.top + 20; // 起始Y位置
 
-	//	DrawSingleIssue(hdc, m_Issues[i], issueRect, (int)i + 1);
-	//}
+	// 计算每个卡片的位置
+	for (size_t i = 0; i < m_IssuesList.size(); i++) {
+		int cardY = startY + (int)i * (cardHeight + cardSpacing);
+
+		// 检查卡片是否在可见区域内（为滚动做准备）
+		if (cardY + cardHeight < m_IssuesRect.top || cardY > m_IssuesRect.bottom) {
+			continue; // 不在可见区域，跳过绘制
+		}
+
+		// 定义卡片矩形区域
+		RECT cardRect = {
+			m_IssuesRect.left + 20,    // left
+			cardY,                     // top
+			m_IssuesRect.left + 20 + cardWidth, // right
+			cardY + cardHeight         // bottom
+		};
+
+		DrawSingleIssueCard(hdc, m_IssuesList[i], cardRect, (int)i + 1);
+	}
+
+	// TODO: 计算总内容高度，为滚动条做准备
+	int totalContentHeight = (int)m_IssuesList.size() * (cardHeight + cardSpacing) + 40;
+	// 这个值可以保存到成员变量中，用于后续的滚动计算
 }
+
+
+void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect, int index) {
+	// 绘制卡片背景（带圆角的白色背景）
+	HBRUSH hCardBrush = CreateSolidBrush(RGB(255, 255, 255));
+	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hCardBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
+
+	// 绘制圆角矩形
+	RoundRect(hdc, cardRect.left, cardRect.top, cardRect.right, cardRect.bottom, 12, 12);
+
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
+	DeleteObject(hCardBrush);
+	DeleteObject(hBorderPen);
+
+	// 设置文本属性
+	SetBkMode(hdc, TRANSPARENT);
+
+	// 创建字体
+	HFONT hBoldFont = CreateFontW(16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
+	HFONT hNormalFont = CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
+	HFONT hSmallFont = CreateFontW(12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
+
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hBoldFont);
+
+	// 绘制ID和标题
+	SetTextColor(hdc, RGB(70, 130, 180));
+	std::wstring subjectText = L"#" + StringToWString(issue.id) + L" " + StringToWString(issue.subject);
+	RECT subjectRect = { cardRect.left + 15, cardRect.top + 12, cardRect.right - 15, cardRect.top + 35 };
+	DrawTextW(hdc, subjectText.c_str(), -1, &subjectRect, DT_LEFT | DT_SINGLELINE);
+
+	// 绘制状态标签（右上角）
+	SelectObject(hdc, hSmallFont);
+	COLORREF statusColor = GetStatusColor(issue.status);
+	SetTextColor(hdc, statusColor);
+	RECT statusRect = { cardRect.right - 100, cardRect.top + 15, cardRect.right - 15, cardRect.top + 35 };
+	std::wstring statusText = L"状态: " + StringToWString(issue.status);
+	DrawTextW(hdc, statusText.c_str(), -1, &statusRect, DT_RIGHT | DT_SINGLELINE);
+
+	// 绘制优先级标签
+	COLORREF priorityColor = GetPriorityColor(issue.priority);
+	SetTextColor(hdc, priorityColor);
+	RECT priorityRect = { cardRect.right - 100, cardRect.top + 35, cardRect.right - 15, cardRect.top + 55 };
+	std::wstring priorityText = L"优先级: " + StringToWString(issue.priority);
+	DrawTextW(hdc, priorityText.c_str(), -1, &priorityRect, DT_RIGHT | DT_SINGLELINE);
+
+	// 绘制进度条
+	DrawProgressBar(hdc, issue, cardRect);
+
+	// 绘制日期信息（底部）
+	SetTextColor(hdc, RGB(100, 100, 100));
+	if (!issue.start_date.empty() && issue.start_date != "None") {
+		RECT dateRect = { cardRect.left + 15, cardRect.bottom - 25, cardRect.right - 15, cardRect.bottom - 5 };
+		std::wstring dateText = L"开始: " + StringToWString(issue.start_date);
+		if (!issue.due_date.empty() && issue.due_date != "None") {
+			dateText += L" | 截止: " + StringToWString(issue.due_date);
+		}
+		DrawTextW(hdc, dateText.c_str(), -1, &dateRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+	}
+
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hBoldFont);
+	DeleteObject(hNormalFont);
+	DeleteObject(hSmallFont);
+}
+
+
+void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect) {
+	int actualProgress = 0;
+	if (!issue.done_ratio.empty() && issue.done_ratio != "None") {
+		actualProgress = std::stoi(issue.done_ratio);
+	}
+
+	int theoreticalProgress = 0;
+
+	// 进度条位置和尺寸
+	int barWidth = 200;
+	int barHeight = 12;
+	int barX = cardRect.left + 15;
+	int barY = cardRect.bottom - 40;
+
+	// 绘制进度条背景
+	HBRUSH hBgBrush = CreateSolidBrush(RGB(240, 240, 240));
+	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBgBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
+	Rectangle(hdc, barX, barY, barX + barWidth, barY + barHeight);
+
+	if (!issue.start_date.empty() && issue.start_date != "None" &&
+		!issue.due_date.empty() && issue.due_date != "None")
+	{
+		SYSTEMTIME startDate = { 0 };
+		sscanf_s(issue.start_date.c_str(), "%hu-%hu-%hu", &startDate.wYear, &startDate.wMonth, &startDate.wDay);
+
+		SYSTEMTIME dueDate = { 0 };
+		sscanf_s(issue.due_date.c_str(), "%hu-%hu-%hu", &dueDate.wYear, &dueDate.wMonth, &dueDate.wDay);
+
+		SYSTEMTIME currentDate;
+		GetLocalTime(&currentDate);
+
+		// 将 SYSTEMTIME 转换为 FILETIME 以便计算
+		FILETIME ftStart, ftDue, ftCurrent;
+		SystemTimeToFileTime(&startDate, &ftStart);
+		SystemTimeToFileTime(&dueDate, &ftDue);
+		SystemTimeToFileTime(&currentDate, &ftCurrent);
+
+		// 将 FILETIME 转换为 ULARGE_INTEGER 进行数值计算
+		ULARGE_INTEGER ullStart = { 0 };
+		ullStart.LowPart = ftStart.dwLowDateTime;
+		ullStart.HighPart = ftStart.dwHighDateTime;
+
+		ULARGE_INTEGER ullDue = { 0 };
+		ullDue.LowPart = ftDue.dwLowDateTime;
+		ullDue.HighPart = ftDue.dwHighDateTime;
+
+		ULARGE_INTEGER ullCurrent = { 0 };
+		ullCurrent.LowPart = ftCurrent.dwLowDateTime;
+		ullCurrent.HighPart = ftCurrent.dwHighDateTime;
+
+		int theoreticalProgress;
+
+		// 计算总时间区间和已过时间区间
+		ULONGLONG totalDuration = ullDue.QuadPart - ullStart.QuadPart;
+		ULONGLONG elapsedDuration = ullCurrent.QuadPart - ullStart.QuadPart;
+
+		if (totalDuration <= 0) {
+			theoreticalProgress = (ullCurrent.QuadPart >= ullDue.QuadPart) ? 100 : 0;
+		}
+		else {
+			theoreticalProgress = elapsedDuration * 100 / totalDuration;
+		}
+
+		cout << issue.id << " theoreticalProgress=" << theoreticalProgress << endl;
+
+		// 绘制理论进度（红色）
+		HBRUSH hTheoreticalBrush = CreateSolidBrush(RGB(255, 100, 100));
+		SelectObject(hdc, hTheoreticalBrush);
+		Rectangle(hdc, barX, barY, barX + barWidth, barY + barHeight);
+		DeleteObject(hTheoreticalBrush);
+	}
+
+
+	// 绘制实际进度（绿色）
+	int actualWidth = (barWidth * actualProgress) / 100;
+	HBRUSH hActualBrush = CreateSolidBrush(RGB(50, 205, 50));
+	SelectObject(hdc, hActualBrush);
+	Rectangle(hdc, barX, barY, barX + actualWidth, barY + barHeight);
+	DeleteObject(hActualBrush);
+
+	// 恢复原来的画笔和画刷
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
+	DeleteObject(hBgBrush);
+	DeleteObject(hBorderPen);
+
+	// 绘制进度文本
+	SetBkMode(hdc, TRANSPARENT);
+	SetTextColor(hdc, RGB(100, 100, 100));
+	HFONT hSmallFont = CreateFontW(
+		10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hSmallFont);
+	std::wstring progressText = std::to_wstring(actualProgress) + L"% 完成";
+	RECT textRect = { barX + barWidth + 10, barY - 2, barX + barWidth + 150, barY + barHeight + 2 };
+	DrawTextW(hdc, progressText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+Clearup:
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hSmallFont);
+}
+
+
+COLORREF RedmineIssuesWidget::GetStatusColor(const std::string& status) {
+	if (status.find("新") != std::string::npos || status.find("New") != std::string::npos) {
+		return RGB(70, 130, 180); // 蓝色
+	}
+	else if (status.find("进行") != std::string::npos || status.find("Progress") != std::string::npos) {
+		return RGB(255, 140, 0); // 橙色
+	}
+	else if (status.find("完成") != std::string::npos || status.find("Resolved") != std::string::npos) {
+		return RGB(50, 205, 50); // 绿色
+	}
+	else {
+		return RGB(100, 100, 100); // 灰色
+	}
+}
+
+COLORREF RedmineIssuesWidget::GetPriorityColor(const std::string& priority) {
+	if (priority.find("高") != std::string::npos || priority.find("High") != std::string::npos) {
+		return RGB(220, 80, 60); // 红色
+	}
+	else if (priority.find("中") != std::string::npos || priority.find("Normal") != std::string::npos) {
+		return RGB(255, 165, 0); // 橙色
+	}
+	else {
+		return RGB(50, 205, 50); // 绿色
+	}
+}
+
+std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
+	if (str.empty()) return L"";
+
+	int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
+	if (len == 0) return L"";
+
+	std::wstring wstr(len - 1, 0);
+	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, &wstr[0], len);
+	return wstr;
+}
+
 
 
 void RedmineIssuesWidget::RequestIssues() {
@@ -90,7 +326,7 @@ void RedmineIssuesWidget::RequestIssues() {
 					for (Py_ssize_t i = 0; i < count; i++) {
 						PyObject* pIssue = PyList_GetItem(pResult, i);
 						if (PyDict_Check(pIssue)) {
-							// 提取字典中的各个字段
+							// Extract each field from the dictionary
 							std::string id = ParsePyDictValueByKey(pIssue, "id");
 							std::string subject = ParsePyDictValueByKey(pIssue, "subject");
 							std::string status = ParsePyDictValueByKey(pIssue, "status");
@@ -106,37 +342,35 @@ void RedmineIssuesWidget::RequestIssues() {
 							std::string tracker = ParsePyDictValueByKey(pIssue, "tracker");
 							std::string description = ParsePyDictValueByKey(pIssue, "description");
 
-							// 构建issue显示字符串
 							result += "\n" + std::to_string(i + 1) + ". 问题 #" + id + "\n";
 							result += "   主题: " + subject + "\n";
 							result += "   状态: " + status + "\n";
 							result += "   优先级: " + priority + "\n";
 							result += "   作者: " + author + "\n";
-							result += "   分配给: " + (assigned_to.empty() ? "未分配" : assigned_to) + "\n";
+							result += "   分配给: " + assigned_to + "\n";
 							result += "   进度: " + done_ratio + "%\n";
 							result += "   创建时间: " + created_on + "\n";
 							result += "   更新时间: " + updated_on + "\n";
-
-							if (!start_date.empty() && start_date != "None") {
-								result += "   计划开始: " + start_date + "\n";
-							}
-							if (!due_date.empty() && due_date != "None") {
-								result += "   计划完成: " + due_date + "\n";
-							}
-
+							result += "   计划开始: " + start_date + "\n";
+							result += "   计划完成: " + due_date + "\n";
 							result += "   项目: " + project + "\n";
 							result += "   类型: " + tracker + "\n";
-
-							if (!description.empty() && description != "None") {
-								std::string desc_preview = description.length() > 150 ?
-									description.substr(0, 150) + "..." : description;
-								result += "   描述: " + desc_preview + "\n";
-							}
-
+							std::string desc_preview = description.length() > 150 ? description.substr(0, 150) + "..." : description;
+							result += "   描述: " + desc_preview + "\n";
 							result += "--------------------------------------------------------------------------------\n";
+
+							// 添加到 m_IssuesList
+							ISSUES_INFO issue;
+							issue.id = id;
+							issue.subject = subject;
+							issue.status = status;
+							issue.priority = priority;
+							issue.done_ratio = done_ratio;
+							issue.start_date = start_date;
+							issue.due_date = due_date;
+							m_IssuesList.push_back(issue);
 						}
 					}
-
 					std::cout << result << std::endl;
 
 				}
@@ -160,7 +394,6 @@ void RedmineIssuesWidget::RequestIssues() {
 
 	Py_Finalize();
 }
-
 
 string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
 	PyObject* pValue = PyDict_GetItemString(dict, key);

@@ -15,6 +15,7 @@
 #include <tchar.h>
 #include <sstream>
 #include <Python.h>
+#include <vector>
 
 #include "main.h"
 #include "redmine.h"
