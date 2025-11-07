@@ -13,6 +13,11 @@ void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 }
 
 void RedmineIssuesWidget::Draw(HDC hdc) {
+	DrawTitle(hdc);
+	DrawIssuesList(hdc);
+}
+
+void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	// Title
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, RGB(0, 0, 0));
@@ -33,6 +38,30 @@ void RedmineIssuesWidget::Draw(HDC hdc) {
 	LineTo(hdc, m_TitleRect.right - 10, m_TitleRect.bottom);// draw line from current position to target position
 	SelectObject(hdc, hOldPen);
 	DeleteObject(hPen);
+}
+
+void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
+	//if (m_Issues.empty()) return;
+
+	// 设置issues区域的背景
+	HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(87, 192, 252));
+	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
+	DeleteObject(hBackgroundBrush);
+
+	// 计算每个issue的显示区域
+	int issueHeight = m_IssuesRect.bottom / 6; // 每个issue占1/6高度
+	int padding = 10;
+
+	//for (size_t i = 0; i < m_Issues.size() && i < 6; i++) {
+	//	RECT issueRect = {
+	//		m_IssuesRect.left + padding,
+	//		m_IssuesRect.top + (int)i * issueHeight + padding,
+	//		m_IssuesRect.right - padding,
+	//		m_IssuesRect.top + (int)(i + 1) * issueHeight - padding
+	//	};
+
+	//	DrawSingleIssue(hdc, m_Issues[i], issueRect, (int)i + 1);
+	//}
 }
 
 

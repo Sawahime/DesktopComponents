@@ -4,6 +4,8 @@ class RedmineIssuesWidget {
 public:
 	void InitWindowRectArea(HWND hWnd);
 	void Draw(HDC hdc);
+	void DrawTitle(HDC hdc);
+	void DrawIssuesList(HDC hdc);
 
 	void RequestIssues();
 
