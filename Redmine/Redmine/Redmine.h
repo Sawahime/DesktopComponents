@@ -28,8 +28,6 @@ public:// Setter and Getter
 	HWND GetWindowHandle() const { return m_hWnd; }
 
 private:
-	COLORREF GetStatusColor(const std::string& status);
-	COLORREF GetPriorityColor(const std::string& priority);
 	std::wstring StringToWString(const std::string& str);
 	std::string ParsePyDictValueByKey(PyObject* dict, const char* key);
 

@@ -2,8 +2,6 @@
 #include "redmine.h"
 #include <iostream>
 
-using namespace std;
-
 
 void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 	GetClientRect(hWnd, &m_TitleRect);
@@ -121,34 +119,8 @@ void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue,
 	RECT subjectRect = { cardRect.left + 15, cardRect.top + 12, cardRect.right - 15, cardRect.top + 35 };
 	DrawTextW(hdc, subjectText.c_str(), -1, &subjectRect, DT_LEFT | DT_SINGLELINE);
 
-	// 绘制状态标签（右上角）
-	SelectObject(hdc, hSmallFont);
-	COLORREF statusColor = GetStatusColor(issue.status);
-	SetTextColor(hdc, statusColor);
-	RECT statusRect = { cardRect.right - 100, cardRect.top + 15, cardRect.right - 15, cardRect.top + 35 };
-	std::wstring statusText = L"状态: " + StringToWString(issue.status);
-	DrawTextW(hdc, statusText.c_str(), -1, &statusRect, DT_RIGHT | DT_SINGLELINE);
-
-	// 绘制优先级标签
-	COLORREF priorityColor = GetPriorityColor(issue.priority);
-	SetTextColor(hdc, priorityColor);
-	RECT priorityRect = { cardRect.right - 100, cardRect.top + 35, cardRect.right - 15, cardRect.top + 55 };
-	std::wstring priorityText = L"优先级: " + StringToWString(issue.priority);
-	DrawTextW(hdc, priorityText.c_str(), -1, &priorityRect, DT_RIGHT | DT_SINGLELINE);
-
 	// 绘制进度条
 	DrawProgressBar(hdc, issue, cardRect);
-
-	// 绘制日期信息（底部）
-	SetTextColor(hdc, RGB(100, 100, 100));
-	if (!issue.start_date.empty() && issue.start_date != "None") {
-		RECT dateRect = { cardRect.left + 15, cardRect.bottom - 25, cardRect.right - 15, cardRect.bottom - 5 };
-		std::wstring dateText = L"开始: " + StringToWString(issue.start_date);
-		if (!issue.due_date.empty() && issue.due_date != "None") {
-			dateText += L" | 截止: " + StringToWString(issue.due_date);
-		}
-		DrawTextW(hdc, dateText.c_str(), -1, &dateRect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
-	}
 
 	SelectObject(hdc, hOldFont);
 	DeleteObject(hBoldFont);
@@ -255,35 +227,6 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 Clearup:
 	SelectObject(hdc, hOldFont);
 	DeleteObject(hSmallFont);
-}
-
-
-COLORREF RedmineIssuesWidget::GetStatusColor(const std::string& status) {
-	if (status.find("新") != std::string::npos || status.find("New") != std::string::npos) {
-		return RGB(70, 130, 180); // 蓝色
-	}
-	else if (status.find("进行") != std::string::npos || status.find("Progress") != std::string::npos) {
-		return RGB(255, 140, 0); // 橙色
-	}
-	else if (status.find("完成") != std::string::npos || status.find("Resolved") != std::string::npos) {
-		return RGB(50, 205, 50); // 绿色
-	}
-	else {
-		return RGB(100, 100, 100); // 灰色
-	}
-}
-
-
-COLORREF RedmineIssuesWidget::GetPriorityColor(const std::string& priority) {
-	if (priority.find("高") != std::string::npos || priority.find("High") != std::string::npos) {
-		return RGB(220, 80, 60); // 红色
-	}
-	else if (priority.find("中") != std::string::npos || priority.find("Normal") != std::string::npos) {
-		return RGB(255, 165, 0); // 橙色
-	}
-	else {
-		return RGB(50, 205, 50); // 绿色
-	}
 }
 
 
@@ -416,7 +359,7 @@ void RedmineIssuesWidget::RequestIssues() {
 }
 
 
-string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
+std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
 	PyObject* pValue = PyDict_GetItemString(dict, key);
 	if (pValue) {
 		if (PyUnicode_Check(pValue)) {
