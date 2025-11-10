@@ -283,7 +283,7 @@ void RedmineIssuesWidget::RequestIssues() {
 					Py_ssize_t count = PyList_Size(pResult);
 
 					// 准备结果字符串
-					std::string result = "分配给【毅 陆】的issues (总计: " + std::to_string(count) + " 个)\n";
+					std::string result = "issues (总计: " + std::to_string(count) + " 个)\n";
 					result += "====================================================================================================\n";
 					std::cout << result << std::endl;
 
