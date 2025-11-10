@@ -132,6 +132,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	}
 
 	RedmineIssuesWidget* redmine = new RedmineIssuesWidget();
+	redmine->RequestIssues();
 	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)redmine);
 
 	ShowWindow(hWnd, nCmdShow);
@@ -182,7 +183,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// 在此处添加使用 hdc 的任何绘图代码...
 		{
 			if (redmine) {
-				redmine->RequestIssues();
 				redmine->InitWindowRectArea(hWnd);
 				redmine->Draw(hdc);
 			}
