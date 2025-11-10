@@ -132,6 +132,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	}
 
 	RedmineIssuesWidget* redmine = new RedmineIssuesWidget();
+	redmine->SetWindowHandle(hWnd);
 	redmine->RequestIssues();
 	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)redmine);
 
@@ -198,6 +199,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_CREATE:
 	{
 		DebugPrint(L"message = WM_CREATE" << std::endl);
+	}
+	break;
+	case WM_MOUSEWHEEL:
+	{
+		if (redmine) {
+			int delta = GET_WHEEL_DELTA_WPARAM(wParam);// up=120, down=-120
+			redmine->HandleMouseWheel(delta);
+		}
 	}
 	break;
 	default:

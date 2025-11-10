@@ -4,6 +4,7 @@
 
 using namespace std;
 
+
 void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 	GetClientRect(hWnd, &m_TitleRect);
 	m_TitleRect.bottom /= 6;
@@ -12,10 +13,12 @@ void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 	m_IssuesRect.top = m_TitleRect.bottom;
 }
 
+
 void RedmineIssuesWidget::Draw(HDC hdc) {
 	DrawTitle(hdc);
 	DrawIssuesList(hdc);
 }
+
 
 void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	// Title
@@ -40,79 +43,79 @@ void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	DeleteObject(hPen);
 }
 
+
 void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
-	// 设置issues区域的背景
+	// Set the background of the issues area
 	HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(87, 192, 252));
 	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
 	DeleteObject(hBackgroundBrush);
 
 	if (m_IssuesList.empty()) return;
 
-	// 计算卡片尺寸和间距
-	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - 40; // 左右各留20px边距
-	int cardHeight = 120; // 每个卡片高度
-	int cardSpacing = 15; // 卡片之间的间距
-	int startY = m_IssuesRect.top + 20; // 起始Y位置
+	// Calculate the size and spacing of the cards
+	int margins = 10; // Left and right margins (in px).
+	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - margins * 2;
+	int cardHeight = 120;
+	int cardSpacing = 10; // The spacing between the cards
+	int startY = m_IssuesRect.top + 10 + m_ContentStartYOffset;
 
-	// 计算每个卡片的位置
+	m_TotalContentHeight = (int)m_IssuesList.size() * (cardHeight + cardSpacing);
+
 	for (size_t i = 0; i < m_IssuesList.size(); i++) {
+		// Calculate the start y-coordinate of each card
 		int cardY = startY + (int)i * (cardHeight + cardSpacing);
 
-		// 检查卡片是否在可见区域内（为滚动做准备）
+		// Check if the card is within the visible area
 		if (cardY + cardHeight < m_IssuesRect.top || cardY > m_IssuesRect.bottom) {
-			continue; // 不在可见区域，跳过绘制
+			continue; // Not within the visible area, skip the drawing.
 		}
 
-		// 定义卡片矩形区域
+		// Define the rectangular area of the card
 		RECT cardRect = {
-			m_IssuesRect.left + 20,    // left
-			cardY,                     // top
-			m_IssuesRect.left + 20 + cardWidth, // right
-			cardY + cardHeight         // bottom
+			m_IssuesRect.left + margins,// left
+			cardY,// top
+			m_IssuesRect.left + margins + cardWidth,// right
+			cardY + cardHeight// bottom
 		};
 
 		DrawSingleIssueCard(hdc, m_IssuesList[i], cardRect, (int)i + 1);
 	}
-
-	// TODO: 计算总内容高度，为滚动条做准备
-	int totalContentHeight = (int)m_IssuesList.size() * (cardHeight + cardSpacing) + 40;
-	// 这个值可以保存到成员变量中，用于后续的滚动计算
 }
 
 
 void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect, int index) {
-	// 绘制卡片背景（带圆角的白色背景）
+	// Draw the background of the card
 	HBRUSH hCardBrush = CreateSolidBrush(RGB(255, 255, 255));
 	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
-
 	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hCardBrush);
 	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
-
-	// 绘制圆角矩形
 	RoundRect(hdc, cardRect.left, cardRect.top, cardRect.right, cardRect.bottom, 12, 12);
-
 	SelectObject(hdc, hOldBrush);
 	SelectObject(hdc, hOldPen);
 	DeleteObject(hCardBrush);
 	DeleteObject(hBorderPen);
 
-	// 设置文本属性
+	// Set text properties
 	SetBkMode(hdc, TRANSPARENT);
-
-	// 创建字体
-	HFONT hBoldFont = CreateFontW(16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+	// Create font
+	HFONT hBoldFont = CreateFontW(
+		16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-	HFONT hNormalFont = CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hNormalFont = CreateFontW(
+		14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-	HFONT hSmallFont = CreateFontW(12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hSmallFont = CreateFontW(
+		12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
 	HFONT hOldFont = (HFONT)SelectObject(hdc, hBoldFont);
 
-	// 绘制ID和标题
+	// Draw the ID and subject
 	SetTextColor(hdc, RGB(70, 130, 180));
 	std::wstring subjectText = L"#" + StringToWString(issue.id) + L" " + StringToWString(issue.subject);
 	RECT subjectRect = { cardRect.left + 15, cardRect.top + 12, cardRect.right - 15, cardRect.top + 35 };
@@ -270,6 +273,7 @@ COLORREF RedmineIssuesWidget::GetStatusColor(const std::string& status) {
 	}
 }
 
+
 COLORREF RedmineIssuesWidget::GetPriorityColor(const std::string& priority) {
 	if (priority.find("高") != std::string::npos || priority.find("High") != std::string::npos) {
 		return RGB(220, 80, 60); // 红色
@@ -282,6 +286,7 @@ COLORREF RedmineIssuesWidget::GetPriorityColor(const std::string& priority) {
 	}
 }
 
+
 std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
 	if (str.empty()) return L"";
 
@@ -293,6 +298,27 @@ std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
 	return wstr;
 }
 
+
+void RedmineIssuesWidget::HandleMouseWheel(int delta)
+{
+	int scrollAmount = -delta / WHEEL_DELTA; // Change to scroll rows
+	int offset = m_ContentStartYOffset - scrollAmount * 30; // Scroll 30 pixels each time
+
+	// upperLimit <= start_y_offset <= lowerLimit
+	int upperLimit = (m_IssuesRect.bottom - m_IssuesRect.top) - m_TotalContentHeight;
+	int lowerLimit = 0;
+	offset = max(upperLimit, offset);
+	offset = min(lowerLimit, offset);
+
+	if (offset != m_ContentStartYOffset) {
+		m_ContentStartYOffset = offset;
+
+		// Redraw
+		if (m_hWnd) {
+			InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);// it will trigger case WM_PAINT to redraw
+		}
+	}
+}
 
 
 void RedmineIssuesWidget::RequestIssues() {
@@ -388,6 +414,7 @@ void RedmineIssuesWidget::RequestIssues() {
 
 	Py_Finalize();
 }
+
 
 string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
 	PyObject* pValue = PyDict_GetItemString(dict, key);
