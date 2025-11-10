@@ -188,6 +188,7 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 		}
 		else {
 			theoreticalProgress = (ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart);
+			theoreticalProgress = min(theoreticalProgress, 100);
 		}
 
 		// 绘制理论进度（红色）
