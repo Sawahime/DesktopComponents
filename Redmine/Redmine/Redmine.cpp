@@ -76,12 +76,12 @@ void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 			cardY + cardHeight// bottom
 		};
 
-		DrawSingleIssueCard(hdc, m_IssuesList[i], cardRect, (int)i + 1);
+		DrawSingleIssueCard(hdc, m_IssuesList[i], cardRect);
 	}
 }
 
 
-void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect, int index) {
+void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect) {
 	// Draw the background of the card
 	HBRUSH hCardBrush = CreateSolidBrush(RGB(255, 255, 255));
 	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));

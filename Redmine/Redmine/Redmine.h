@@ -17,7 +17,7 @@ public:
 	void Draw(HDC hdc);
 	void DrawTitle(HDC hdc);
 	void DrawIssuesList(HDC hdc);
-	void DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect, int index);
+	void DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect);
 	void DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect);
 	void HandleMouseWheel(int delta);
 
