@@ -127,8 +127,6 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 		actualProgress = std::stoi(issue.done_ratio);
 	}
 
-	int theoreticalProgress = 0;
-
 	// 进度条位置和尺寸
 	int margins = 15;
 	int barWidth = cardRect.right - cardRect.left - margins * 2 - 48;;
@@ -196,13 +194,6 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 	HBRUSH hActualBrush = CreateSolidBrush(RGB(50, 205, 50));
 	SelectObject(hdc, hActualBrush);
 	Rectangle(hdc, barX, barY, barX + actualWidth, barY + barHeight);
-	DeleteObject(hActualBrush);
-
-	// 恢复原来的画笔和画刷
-	SelectObject(hdc, hOldBrush);
-	SelectObject(hdc, hOldPen);
-	DeleteObject(hBgBrush);
-	DeleteObject(hBorderPen);
 
 	// 绘制进度文本
 	SetBkMode(hdc, TRANSPARENT);
@@ -217,8 +208,12 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 	RECT textRect = { barX + barWidth + 10, barY - 2, barX + barWidth + 150, barY + barHeight + 2 };
 	DrawTextW(hdc, progressText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
-Clearup:
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
 	SelectObject(hdc, hOldFont);
+	DeleteObject(hActualBrush);
+	DeleteObject(hBgBrush);
+	DeleteObject(hBorderPen);
 	DeleteObject(hSmallFont);
 }
 
