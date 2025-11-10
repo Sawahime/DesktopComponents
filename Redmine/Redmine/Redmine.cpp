@@ -285,8 +285,10 @@ void RedmineIssuesWidget::RequestIssues() {
 					// 准备结果字符串
 					std::string result = "分配给【毅 陆】的issues (总计: " + std::to_string(count) + " 个)\n";
 					result += "====================================================================================================\n";
+					std::cout << result << std::endl;
 
 					for (Py_ssize_t i = 0; i < count; i++) {
+						result.clear();
 						PyObject* pIssue = PyList_GetItem(pResult, i);
 						if (PyDict_Check(pIssue)) {
 							// Extract each field from the dictionary
@@ -321,6 +323,7 @@ void RedmineIssuesWidget::RequestIssues() {
 							std::string desc_preview = description.length() > 150 ? description.substr(0, 150) + "..." : description;
 							result += "   描述: " + desc_preview + "\n";
 							result += "--------------------------------------------------------------------------------\n";
+							std::cout << result << std::endl;
 
 							// 添加到 m_IssuesList
 							ISSUES_INFO issue;
@@ -334,7 +337,6 @@ void RedmineIssuesWidget::RequestIssues() {
 							m_IssuesList.push_back(issue);
 						}
 					}
-					std::cout << result << std::endl;
 
 				}
 				else {
