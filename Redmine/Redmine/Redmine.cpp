@@ -241,6 +241,22 @@ std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
 	return wstr;
 }
 
+std::string RedmineIssuesWidget::WCharToString(const wchar_t* wstr) {
+	if (wstr == nullptr) {
+		return "";
+	}
+
+	int bufferSize = WideCharToMultiByte(CP_ACP, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+	if (bufferSize == 0) {
+		return "";
+	}
+
+	std::vector<char> buffer(bufferSize);
+	WideCharToMultiByte(CP_ACP, 0, wstr, -1, buffer.data(), bufferSize, nullptr, nullptr);
+
+	return std::string(buffer.data());
+}
+
 
 void RedmineIssuesWidget::HandleMouseWheel(int delta)
 {
@@ -265,98 +281,114 @@ void RedmineIssuesWidget::HandleMouseWheel(int delta)
 
 
 void RedmineIssuesWidget::RequestIssues() {
+	PyObject* pModule = nullptr;
+	PyObject* pFunc = nullptr;
+	PyObject* pArgs = nullptr;
+	PyObject* pName = nullptr;
+	PyObject* pResult = nullptr;
+	Py_ssize_t count = 0;
+	std::string result;
+	const wchar_t* assigneeName = L"毅 陆";
+
 	Py_Initialize();
 	PyRun_SimpleString("import sys");
 	PyRun_SimpleString("sys.path.append('.')");
 
-	// 导入模块
-	PyObject* pModule = PyImport_ImportModule("pyif");
-	if (pModule != NULL) {
-		// 获取函数
-		PyObject* pFunc = PyObject_GetAttrString(pModule, "get_issues_cpp_intf");
-		if (pFunc && PyCallable_Check(pFunc)) {
-			// 调用函数
-			PyObject* pResult = PyObject_CallObject(pFunc, NULL);
-			if (pResult != NULL) {
-				// 检查返回的是否是列表
-				if (PyList_Check(pResult)) {
-					Py_ssize_t count = PyList_Size(pResult);
-
-					// 准备结果字符串
-					std::string result = "issues (总计: " + std::to_string(count) + " 个)\n";
-					result += "====================================================================================================\n";
-					std::cout << result << std::endl;
-
-					for (Py_ssize_t i = 0; i < count; i++) {
-						result.clear();
-						PyObject* pIssue = PyList_GetItem(pResult, i);
-						if (PyDict_Check(pIssue)) {
-							// Extract each field from the dictionary
-							std::string id = ParsePyDictValueByKey(pIssue, "id");
-							std::string subject = ParsePyDictValueByKey(pIssue, "subject");
-							std::string status = ParsePyDictValueByKey(pIssue, "status");
-							std::string priority = ParsePyDictValueByKey(pIssue, "priority");
-							std::string author = ParsePyDictValueByKey(pIssue, "author");
-							std::string assigned_to = ParsePyDictValueByKey(pIssue, "assigned_to");
-							std::string done_ratio = ParsePyDictValueByKey(pIssue, "done_ratio");
-							std::string created_on = ParsePyDictValueByKey(pIssue, "created_on");
-							std::string updated_on = ParsePyDictValueByKey(pIssue, "updated_on");
-							std::string start_date = ParsePyDictValueByKey(pIssue, "start_date");
-							std::string due_date = ParsePyDictValueByKey(pIssue, "due_date");
-							std::string project = ParsePyDictValueByKey(pIssue, "project");
-							std::string tracker = ParsePyDictValueByKey(pIssue, "tracker");
-							std::string description = ParsePyDictValueByKey(pIssue, "description");
-
-							result += "\n" + std::to_string(i + 1) + ". 问题 #" + id + "\n";
-							result += "   主题: " + subject + "\n";
-							result += "   状态: " + status + "\n";
-							result += "   优先级: " + priority + "\n";
-							result += "   作者: " + author + "\n";
-							result += "   分配给: " + assigned_to + "\n";
-							result += "   进度: " + done_ratio + "%\n";
-							result += "   创建时间: " + created_on + "\n";
-							result += "   更新时间: " + updated_on + "\n";
-							result += "   计划开始: " + start_date + "\n";
-							result += "   计划完成: " + due_date + "\n";
-							result += "   项目: " + project + "\n";
-							result += "   类型: " + tracker + "\n";
-							std::string desc_preview = description.length() > 150 ? description.substr(0, 150) + "..." : description;
-							result += "   描述: " + desc_preview + "\n";
-							result += "--------------------------------------------------------------------------------\n";
-							std::cout << result << std::endl;
-
-							// 添加到 m_IssuesList
-							ISSUES_INFO issue;
-							issue.id = id;
-							issue.subject = subject;
-							issue.status = status;
-							issue.priority = priority;
-							issue.done_ratio = done_ratio;
-							issue.start_date = start_date;
-							issue.due_date = due_date;
-							m_IssuesList.push_back(issue);
-						}
-					}
-
-				}
-				else {
-					// 处理错误情况
-					DebugPrint(L"错误：函数返回的不是列表" << std::endl);
-				}
-
-				Py_DECREF(pResult);
-			}
-			Py_DECREF(pFunc);
-		}
-		else {
-			DebugPrint(L"错误：找不到函数 get_issues_cpp_intf" << std::endl);
-		}
-		Py_DECREF(pModule);
-	}
-	else {
+	pModule = PyImport_ImportModule("pyif");// python file name
+	if (pModule == nullptr) {
 		DebugPrint(L"错误：无法导入模块 pyif" << std::endl);
+		goto Cleanup;
 	}
 
+	pFunc = PyObject_GetAttrString(pModule, "get_issues_by_assignee_name_cpp_intf");
+	if (pFunc == nullptr || PyCallable_Check(pFunc) == false) {
+		DebugPrint(L"错误：找不到函数或函数不可调用" << std::endl);
+		goto Cleanup;
+	}
+
+	// Prepare the input param
+	pArgs = PyTuple_New(1);// new an empty tuple
+	if (pArgs == nullptr) {
+		DebugPrint(L"错误：PyTuple_New failed" << std::endl);
+		goto Cleanup;
+	}
+	pName = PyUnicode_FromWideChar(assigneeName, -1);
+	if (pName == nullptr) {
+		DebugPrint(L"错误：PyUnicode_FromWideChar failed" << std::endl);
+		goto Cleanup;
+	}
+	// Inser pName to the tuple. Tuple steals reference, so do not Py_DECREF(Decrease Reference)
+	PyTuple_SetItem(pArgs, 0, pName);
+
+	pResult = PyObject_CallObject(pFunc, pArgs);
+	if (pResult == nullptr || PyList_Check(pResult) == false) {
+		DebugPrint(L"错误：PyObject_CallObject failed or result is not a list" << std::endl);
+		goto Cleanup;
+	}
+
+	count = PyList_Size(pResult);
+	result = "Totally " + std::to_string(count) + " issues for " + WCharToString(assigneeName) + "\n";
+	result += "====================================================================================================\n";
+	std::cout << result << std::endl;
+
+	for (Py_ssize_t i = 0; i < count; i++) {
+		PyObject* pIssue = PyList_GetItem(pResult, i);
+		if (PyDict_Check(pIssue) == false) {
+			continue;
+		}
+
+		// Extract each field from the dictionary
+		std::string id = ParsePyDictValueByKey(pIssue, "id");
+		std::string subject = ParsePyDictValueByKey(pIssue, "subject");
+		std::string status = ParsePyDictValueByKey(pIssue, "status");
+		std::string priority = ParsePyDictValueByKey(pIssue, "priority");
+		std::string author = ParsePyDictValueByKey(pIssue, "author");
+		std::string assigned_to = ParsePyDictValueByKey(pIssue, "assigned_to");
+		std::string done_ratio = ParsePyDictValueByKey(pIssue, "done_ratio");
+		std::string created_on = ParsePyDictValueByKey(pIssue, "created_on");
+		std::string updated_on = ParsePyDictValueByKey(pIssue, "updated_on");
+		std::string start_date = ParsePyDictValueByKey(pIssue, "start_date");
+		std::string due_date = ParsePyDictValueByKey(pIssue, "due_date");
+		std::string project = ParsePyDictValueByKey(pIssue, "project");
+		std::string tracker = ParsePyDictValueByKey(pIssue, "tracker");
+		std::string description = ParsePyDictValueByKey(pIssue, "description");
+
+		result.clear();
+		result += "\n" + std::to_string(i + 1) + ". 问题 #" + id + "\n";
+		result += "   主题: " + subject + "\n";
+		result += "   状态: " + status + "\n";
+		result += "   优先级: " + priority + "\n";
+		result += "   作者: " + author + "\n";
+		result += "   分配给: " + assigned_to + "\n";
+		result += "   进度: " + done_ratio + "%\n";
+		result += "   创建时间: " + created_on + "\n";
+		result += "   更新时间: " + updated_on + "\n";
+		result += "   计划开始: " + start_date + "\n";
+		result += "   计划完成: " + due_date + "\n";
+		result += "   项目: " + project + "\n";
+		result += "   类型: " + tracker + "\n";
+		std::string desc_preview = description.length() > 150 ? description.substr(0, 150) + "..." : description;
+		result += "   描述: " + desc_preview + "\n";
+		result += "--------------------------------------------------------------------------------\n";
+		std::cout << result << std::endl;
+
+		// 添加到 m_IssuesList
+		ISSUES_INFO issue;
+		issue.id = id;
+		issue.subject = subject;
+		issue.status = status;
+		issue.priority = priority;
+		issue.done_ratio = done_ratio;
+		issue.start_date = start_date;
+		issue.due_date = due_date;
+		m_IssuesList.push_back(issue);
+	}
+
+Cleanup:
+	if (pResult) Py_DECREF(pResult);
+	if (pArgs) Py_DECREF(pArgs);
+	if (pFunc) Py_DECREF(pFunc);
+	if (pModule) Py_DECREF(pModule);
 	Py_Finalize();
 }
 

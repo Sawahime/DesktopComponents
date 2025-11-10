@@ -29,6 +29,7 @@ public:// Setter and Getter
 
 private:
 	std::wstring StringToWString(const std::string& str);
+	std::string WCharToString(const wchar_t* wstr);
 	std::string ParsePyDictValueByKey(PyObject* dict, const char* key);
 
 private:

@@ -212,6 +212,12 @@ def get_issues_cpp_intf():
     return client.get_issues_as_dict_by_assignee(assignee_name="毅 陆")
 
 
+def get_issues_by_assignee_name_cpp_intf(assignee_name):
+    redmine_url = "http://192.168.3.202:3000"
+    client = RedmineClient(redmine_url)
+    return client.get_issues_as_dict_by_assignee(assignee_name=assignee_name)
+
+
 def test():
     issues = get_issues_cpp_intf()
 
