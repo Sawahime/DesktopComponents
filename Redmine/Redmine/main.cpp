@@ -115,7 +115,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	int screenWidth = GetSystemMetrics(SM_CXFULLSCREEN);
 	int screenHeight = GetSystemMetrics(SM_CYFULLSCREEN);
 
-	int windowWidth = screenWidth / 3;
+	int windowWidth = screenWidth / 4;
 	int windowHeight = screenHeight;
 
 	int xPos = screenWidth - windowWidth;

@@ -31,14 +31,6 @@ void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	DrawTextW(hdc, m_TitleText, -1, &m_TitleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
 	SelectObject(hdc, hOldFont);
 	DeleteObject(hFont);
-
-	// Boundary
-	HPEN hPen = CreatePen(PS_SOLID, 2, RGB(200, 200, 200));
-	HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-	MoveToEx(hdc, m_TitleRect.left + 10, m_TitleRect.bottom, nullptr);// move pan to (x,y)
-	LineTo(hdc, m_TitleRect.right - 10, m_TitleRect.bottom);// draw line from current position to target position
-	SelectObject(hdc, hOldPen);
-	DeleteObject(hPen);
 }
 
 
@@ -53,7 +45,7 @@ void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 	// Calculate the size and spacing of the cards
 	int margins = 10; // Left and right margins (in px).
 	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - margins * 2;
-	int cardHeight = 120;
+	int cardHeight = 72;
 	int cardSpacing = 10; // The spacing between the cards
 	int startY = m_IssuesRect.top + 10 + m_ContentStartYOffset;
 
@@ -97,7 +89,7 @@ void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue,
 	SetBkMode(hdc, TRANSPARENT);
 	// Create font
 	HFONT hBoldFont = CreateFontW(
-		16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
 		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
 	);
@@ -138,10 +130,11 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 	int theoreticalProgress = 0;
 
 	// 进度条位置和尺寸
-	int barWidth = 200;
-	int barHeight = 12;
-	int barX = cardRect.left + 15;
-	int barY = cardRect.bottom - 40;
+	int margins = 15;
+	int barWidth = cardRect.right - cardRect.left - margins * 2 - 48;;
+	int barHeight = 16;
+	int barX = cardRect.left + margins;
+	int barY = cardRect.bottom - barHeight - 12;
 
 	// 绘制进度条背景
 	HBRUSH hBgBrush = CreateSolidBrush(RGB(240, 240, 240));
@@ -198,7 +191,6 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 		DeleteObject(hTheoreticalBrush);
 	}
 
-
 	// 绘制实际进度（绿色）
 	int actualWidth = (barWidth * actualProgress) / 100;
 	HBRUSH hActualBrush = CreateSolidBrush(RGB(50, 205, 50));
@@ -216,7 +208,7 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 	SetBkMode(hdc, TRANSPARENT);
 	SetTextColor(hdc, RGB(100, 100, 100));
 	HFONT hSmallFont = CreateFontW(
-		10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		barHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
 		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
 	);
