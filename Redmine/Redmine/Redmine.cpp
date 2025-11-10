@@ -208,23 +208,17 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 
 		int theoreticalProgress;
 
-		// 计算总时间区间和已过时间区间
-		ULONGLONG totalDuration = ullDue.QuadPart - ullStart.QuadPart;
-		ULONGLONG elapsedDuration = ullCurrent.QuadPart - ullStart.QuadPart;
-
-		if (totalDuration <= 0) {
-			theoreticalProgress = (ullCurrent.QuadPart >= ullDue.QuadPart) ? 100 : 0;
+		if (ullCurrent.QuadPart <= ullStart.QuadPart || ullDue.QuadPart <= ullStart.QuadPart) {
+			theoreticalProgress = 0;
 		}
 		else {
-			theoreticalProgress = elapsedDuration * 100 / totalDuration;
+			theoreticalProgress = (ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart);
 		}
-
-		cout << issue.id << " theoreticalProgress=" << theoreticalProgress << endl;
 
 		// 绘制理论进度（红色）
 		HBRUSH hTheoreticalBrush = CreateSolidBrush(RGB(255, 100, 100));
 		SelectObject(hdc, hTheoreticalBrush);
-		Rectangle(hdc, barX, barY, barX + barWidth, barY + barHeight);
+		Rectangle(hdc, barX, barY, barX + barWidth * theoreticalProgress / 100, barY + barHeight);
 		DeleteObject(hTheoreticalBrush);
 	}
 
