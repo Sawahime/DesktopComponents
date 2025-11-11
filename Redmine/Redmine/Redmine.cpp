@@ -1,6 +1,8 @@
 ﻿#include "framework.h"
 #include "redmine.h"
 #include <iostream>
+#include <unordered_map>
+#include <algorithm>
 
 
 void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
@@ -372,6 +374,8 @@ void RedmineIssuesWidget::RequestIssues() {
 		m_IssuesList.push_back(issue);
 	}
 
+	SortIssues();
+
 Cleanup:
 	if (pResult) Py_DECREF(pResult);
 	if (pArgs) Py_DECREF(pArgs);
@@ -402,4 +406,34 @@ std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const cha
 		}
 	}
 	return "";
+}
+
+
+void RedmineIssuesWidget::SortIssues() {
+	std::unordered_map<std::string, int> priorityMap = {
+		{"Immediate", 0},
+		{"Urgent", 1},
+		{"High", 2},
+		{"Normal", 3},
+		{"Low", 4}
+	};
+
+	std::stable_sort(
+		m_IssuesList.begin(), m_IssuesList.end(),
+		[](const ISSUES_INFO& a, const ISSUES_INFO& b) {
+			if (a.due_date.empty() && b.due_date.empty()) return false;
+			if (a.due_date.empty()) return false;  // a空，b不空，a排后面
+			if (b.due_date.empty()) return true;   // a不空，b空，a排前面
+			return a.due_date < b.due_date;
+		}
+	);
+
+	std::stable_sort(
+		m_IssuesList.begin(), m_IssuesList.end(),
+		[&priorityMap](const ISSUES_INFO& a, const ISSUES_INFO& b) {
+			int priorityA = priorityMap.count(a.priority) ? priorityMap[a.priority] : 4;
+			int priorityB = priorityMap.count(b.priority) ? priorityMap[b.priority] : 4;
+			return priorityA < priorityB;
+		}
+	);
 }

@@ -31,6 +31,7 @@ private:
 	std::wstring StringToWString(const std::string& str);
 	std::string WCharToString(const wchar_t* wstr);
 	std::string ParsePyDictValueByKey(PyObject* dict, const char* key);
+	void SortIssues();
 
 private:
 	HWND m_hWnd = nullptr;
