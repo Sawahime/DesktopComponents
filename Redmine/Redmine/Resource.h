@@ -16,6 +16,14 @@
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
 #endif
+
+// 托盘图标资源
+#define IDI_TRAY_ICON           IDI_SMALL
+#define WM_TRAYICON             (WM_USER + 1)
+#define ID_TRAY_ICON            1001
+#define ID_TRAY_SHOW_LOG        1002
+#define ID_TRAY_EXIT            1003
+
 // 新对象的下一组默认值
 //
 #ifdef APSTUDIO_INVOKED

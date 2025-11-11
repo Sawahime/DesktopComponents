@@ -3,6 +3,7 @@
 #include <winhttp.h>
 #include <iostream>
 #pragma comment(lib, "winhttp.lib")
+#include <shellapi.h>
 
 #define MAX_LOADSTRING 100
 constexpr UINT_PTR TIMER_ID_REDMINE = 1;
@@ -153,6 +154,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	//FunctionEntryLog;
 	RedmineIssuesWidget* redmine = (RedmineIssuesWidget*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
 
+	static NOTIFYICONDATA nid = {};
+
 	switch (message)
 	{
 	case WM_COMMAND:
@@ -201,6 +204,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_CREATE:
 	{
 		DebugPrint(L"message = WM_CREATE" << std::endl);
+
+		// 初始化系统托盘图标
+		nid.cbSize = sizeof(NOTIFYICONDATA);
+		nid.hWnd = hWnd;
+		nid.uID = ID_TRAY_ICON;
+		nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+		nid.uCallbackMessage = WM_TRAYICON;
+		nid.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_TRAY_ICON));
+		wcscpy_s(nid.szTip, L"Redmine Issues Widget");
+
+		Shell_NotifyIcon(NIM_ADD, &nid);
 	}
 	break;
 	case WM_MOUSEWHEEL:
