@@ -64,6 +64,7 @@ int APIENTRY wWinMain(
 		}
 	}
 
+	FunctionExitLog;
 	return (int)msg.wParam;
 }
 
@@ -135,6 +136,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	redmine->SetWindowHandle(hWnd);
 	redmine->RequestIssues();
 	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)redmine);
+
+	SetTimer(hWnd, 1, 3 * 1000, nullptr);
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
@@ -211,6 +214,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if (redmine) {
 			int delta = GET_WHEEL_DELTA_WPARAM(wParam);// up=120, down=-120
 			redmine->HandleMouseWheel(delta);
+		}
+	}
+	break;
+	case WM_TIMER:
+	{
+		DebugPrint(L"message = WM_TIMER" << std::endl);
+		if (redmine) {
+			redmine->RequestIssues();
 		}
 	}
 	break;

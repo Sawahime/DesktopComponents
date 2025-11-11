@@ -10,3 +10,4 @@
     } while(0)
 
 #define FunctionEntryLog DebugPrint(__FUNCTION__ << L" Entry" << std::endl);
+#define FunctionExitLog DebugPrint(__FUNCTION__ << L" Exit" << std::endl);

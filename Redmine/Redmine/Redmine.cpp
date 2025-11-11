@@ -5,6 +5,58 @@
 #include <algorithm>
 
 
+bool RedmineIssuesWidget::InitializePython() {
+	Py_Initialize();
+	PyRun_SimpleString("import sys");
+	PyRun_SimpleString("sys.path.append('.')");
+
+	m_Module = PyImport_ImportModule("pyif");// python file name
+	if (m_Module == nullptr) {
+		DebugPrint(L"错误：无法导入模块 pyif" << std::endl);
+		return false;
+	}
+
+	m_Func = PyObject_GetAttrString(m_Module, "get_issues_by_assignee_name_cpp_intf");
+	if (m_Func == nullptr || PyCallable_Check(m_Func) == false) {
+		DebugPrint(L"错误：找不到函数或函数不可调用" << std::endl);
+		return false;
+	}
+
+	// Prepare the input param
+	m_ArgsTuple = PyTuple_New(1);// new an empty tuple
+	if (m_ArgsTuple == nullptr) {
+		DebugPrint(L"错误：PyTuple_New failed" << std::endl);
+		return false;
+	}
+	PyObject* arg1 = PyUnicode_FromWideChar(L"毅 陆", -1);
+	if (arg1 == nullptr) {
+		DebugPrint(L"错误：PyUnicode_FromWideChar failed" << std::endl);
+		return false;
+	}
+	// Inser pName to the tuple. Tuple steals reference, so do not Py_DECREF(Decrease Reference)
+	PyTuple_SetItem(m_ArgsTuple, 0, arg1);
+
+	return true;
+}
+
+
+void RedmineIssuesWidget::FinallizePython() {
+	if (m_ArgsTuple) {
+		Py_DECREF(m_ArgsTuple);
+		m_ArgsTuple = nullptr;
+	}
+	if (m_Func) {
+		Py_DECREF(m_Func);
+		m_Func = nullptr;
+	}
+	if (m_Module) {
+		Py_DECREF(m_Module);
+		m_Module = nullptr;
+	}
+	Py_Finalize();
+}
+
+
 void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 	GetClientRect(hWnd, &m_TitleRect);
 	m_TitleRect.bottom /= 6;
@@ -271,55 +323,26 @@ void RedmineIssuesWidget::HandleMouseWheel(int delta)
 
 
 void RedmineIssuesWidget::RequestIssues() {
-	PyObject* pModule = nullptr;
-	PyObject* pFunc = nullptr;
-	PyObject* pArgs = nullptr;
-	PyObject* pName = nullptr;
-	PyObject* pResult = nullptr;
-	Py_ssize_t count = 0;
-	std::string result;
-	const wchar_t* assigneeName = L"毅 陆";
-
-	Py_Initialize();
-	PyRun_SimpleString("import sys");
-	PyRun_SimpleString("sys.path.append('.')");
-
-	pModule = PyImport_ImportModule("pyif");// python file name
-	if (pModule == nullptr) {
-		DebugPrint(L"错误：无法导入模块 pyif" << std::endl);
-		goto Cleanup;
+	if (m_Func == nullptr) {
+		DebugPrint(L"错误：m_Func为空" << std::endl);
+		return;
+	}
+	if (m_ArgsTuple == nullptr) {
+		DebugPrint(L"错误：m_ArgsTuple为空" << std::endl);
+		return;
 	}
 
-	pFunc = PyObject_GetAttrString(pModule, "get_issues_by_assignee_name_cpp_intf");
-	if (pFunc == nullptr || PyCallable_Check(pFunc) == false) {
-		DebugPrint(L"错误：找不到函数或函数不可调用" << std::endl);
-		goto Cleanup;
-	}
+	m_IssuesList.clear();
 
-	// Prepare the input param
-	pArgs = PyTuple_New(1);// new an empty tuple
-	if (pArgs == nullptr) {
-		DebugPrint(L"错误：PyTuple_New failed" << std::endl);
-		goto Cleanup;
-	}
-	pName = PyUnicode_FromWideChar(assigneeName, -1);
-	if (pName == nullptr) {
-		DebugPrint(L"错误：PyUnicode_FromWideChar failed" << std::endl);
-		goto Cleanup;
-	}
-	// Inser pName to the tuple. Tuple steals reference, so do not Py_DECREF(Decrease Reference)
-	PyTuple_SetItem(pArgs, 0, pName);
-
-	pResult = PyObject_CallObject(pFunc, pArgs);
+	PyObject* pResult = PyObject_CallObject(m_Func, m_ArgsTuple);
 	if (pResult == nullptr || PyList_Check(pResult) == false) {
 		DebugPrint(L"错误：PyObject_CallObject failed or result is not a list" << std::endl);
-		goto Cleanup;
+		return;
 	}
 
-	count = PyList_Size(pResult);
-	result = "Totally " + std::to_string(count) + " issues for " + WCharToString(assigneeName) + "\n";
-	result += "====================================================================================================\n";
-	std::cout << result << std::endl;
+	Py_ssize_t count = PyList_Size(pResult);
+	std::string result = "Totally " + std::to_string(count) + " issues for the assignor\n";
+	result += "================================================================================\n";
 
 	for (Py_ssize_t i = 0; i < count; i++) {
 		PyObject* pIssue = PyList_GetItem(pResult, i);
@@ -343,7 +366,7 @@ void RedmineIssuesWidget::RequestIssues() {
 		std::string tracker = ParsePyDictValueByKey(pIssue, "tracker");
 		std::string description = ParsePyDictValueByKey(pIssue, "description");
 
-		result.clear();
+		// Debug Info
 		result += "\n" + std::to_string(i + 1) + ". 问题 #" + id + "\n";
 		result += "   主题: " + subject + "\n";
 		result += "   状态: " + status + "\n";
@@ -361,8 +384,8 @@ void RedmineIssuesWidget::RequestIssues() {
 		result += "   描述: " + desc_preview + "\n";
 		result += "--------------------------------------------------------------------------------\n";
 		std::cout << result << std::endl;
+		result.clear();
 
-		// 添加到 m_IssuesList
 		ISSUES_INFO issue;
 		issue.id = id;
 		issue.subject = subject;
@@ -376,12 +399,7 @@ void RedmineIssuesWidget::RequestIssues() {
 
 	SortIssues();
 
-Cleanup:
 	if (pResult) Py_DECREF(pResult);
-	if (pArgs) Py_DECREF(pArgs);
-	if (pFunc) Py_DECREF(pFunc);
-	if (pModule) Py_DECREF(pModule);
-	Py_Finalize();
 }
 
 

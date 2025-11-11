@@ -13,6 +13,19 @@ private:
 	}ISSUES_INFO, * PISSUES_INFO;
 
 public:
+	RedmineIssuesWidget() {
+		FunctionEntryLog;
+		InitializePython();
+	}
+
+	~RedmineIssuesWidget() {
+		FunctionEntryLog;
+		FinallizePython();
+	}
+
+	bool InitializePython();
+	void FinallizePython();
+
 	void InitWindowRectArea(HWND hWnd);
 	void Draw(HDC hdc);
 	void DrawTitle(HDC hdc);
@@ -35,6 +48,10 @@ private:
 
 private:
 	HWND m_hWnd = nullptr;
+
+	PyObject* m_Module = nullptr;
+	PyObject* m_Func = nullptr;
+	PyObject* m_ArgsTuple = nullptr;
 
 	RECT m_TitleRect = { 0 };
 	LPCWSTR m_TitleText = L"Redmine Issues";
