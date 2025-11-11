@@ -6,13 +6,11 @@
 
 #define MAX_LOADSTRING 100
 
-// 全局变量:
 HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
 
-// 此代码模块中包含的函数的前向声明:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
+ATOM                RegisterWindowClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
@@ -42,7 +40,7 @@ int APIENTRY wWinMain(
 	// 初始化全局字符串
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_REDMINE, szWindowClass, MAX_LOADSTRING);
-	MyRegisterClass(hInstance);
+	RegisterWindowClass(hInstance);
 
 	// 执行应用程序初始化:
 	if (!InitInstance(hInstance, nCmdShow))
@@ -69,14 +67,7 @@ int APIENTRY wWinMain(
 }
 
 
-
-//
-//  函数: MyRegisterClass()
-//
-//  目标: 注册窗口类。
-//
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
+ATOM RegisterWindowClass(HINSTANCE hInstance) {
 	FunctionEntryLog;
 
 	WNDCLASSEXW wcex = { 0 };
