@@ -335,8 +335,13 @@ void RedmineIssuesWidget::RequestIssues() {
 	m_IssuesList.clear();
 
 	PyObject* pResult = PyObject_CallObject(m_Func, m_ArgsTuple);
-	if (pResult == nullptr || PyList_Check(pResult) == false) {
-		DebugPrint(L"错误：PyObject_CallObject failed or result is not a list" << std::endl);
+	if (pResult == nullptr) {
+		DebugPrint(L"Error：PyObject_CallObject failed" << std::endl);
+		return;
+	}
+	if (PyList_Check(pResult) == false) {
+		DebugPrint(L"Error：PyObject_CallObject return is not a list" << std::endl);
+		Py_DECREF(pResult);
 		return;
 	}
 
@@ -399,7 +404,7 @@ void RedmineIssuesWidget::RequestIssues() {
 
 	SortIssues();
 
-	if (pResult) Py_DECREF(pResult);
+	Py_DECREF(pResult);
 }
 
 
