@@ -193,6 +193,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_DESTROY:
 	{
+		DebugPrint(L"message = WM_DESTROY" << std::endl);
+		if (redmine) {
+			delete redmine;
+			SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
+		}
 		PostQuitMessage(0);
 	}
 	break;
