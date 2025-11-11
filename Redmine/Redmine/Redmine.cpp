@@ -403,6 +403,10 @@ void RedmineIssuesWidget::RequestIssues() {
 	}
 
 	SortIssues();
+	// Redraw
+	if (m_hWnd) {
+		InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);// it will trigger case WM_PAINT to redraw
+	}
 
 	Py_DECREF(pResult);
 }

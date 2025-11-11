@@ -5,6 +5,8 @@
 #pragma comment(lib, "winhttp.lib")
 
 #define MAX_LOADSTRING 100
+constexpr UINT_PTR TIMER_ID_REDMINE = 1;
+constexpr UINT TIMER_INTERVAL_MS = 30000;
 
 HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
@@ -128,7 +130,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	redmine->RequestIssues();
 	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)redmine);
 
-	SetTimer(hWnd, 1, 3 * 1000, nullptr);
+	SetTimer(hWnd, TIMER_ID_REDMINE, TIMER_INTERVAL_MS, nullptr);
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
@@ -188,6 +190,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 	{
 		DebugPrint(L"message = WM_DESTROY" << std::endl);
+		KillTimer(hWnd, TIMER_ID_REDMINE);
 		if (redmine) {
 			delete redmine;
 			SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
@@ -211,7 +214,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_TIMER:
 	{
 		DebugPrint(L"message = WM_TIMER" << std::endl);
-		if (redmine) {
+		if (wParam == TIMER_ID_REDMINE && redmine) {
 			redmine->RequestIssues();
 		}
 	}
