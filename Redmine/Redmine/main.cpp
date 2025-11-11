@@ -125,6 +125,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	{
 		return FALSE;
 	}
+	// 让窗口不在任务栏显示
+	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
 
 	RedmineIssuesWidget* redmine = new RedmineIssuesWidget();
 	redmine->SetWindowHandle(hWnd);
@@ -170,6 +172,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDM_EXIT:
 			DestroyWindow(hWnd);
 			break;
+		case ID_TRAY_SHOW_LOG:
+			MessageBox(hWnd, L"显示日志窗口功能待实现", L"提示", MB_OK);
+			break;
+		case ID_TRAY_EXIT:
+			DestroyWindow(hWnd);
+			break;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
@@ -193,6 +201,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_DESTROY:
 	{
 		DebugPrint(L"message = WM_DESTROY" << std::endl);
+
+		Shell_NotifyIcon(NIM_DELETE, &nid);
+
 		KillTimer(hWnd, TIMER_ID_REDMINE);
 		if (redmine) {
 			delete redmine;
@@ -230,6 +241,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		DebugPrint(L"message = WM_TIMER" << std::endl);
 		if (wParam == TIMER_ID_REDMINE && redmine) {
 			redmine->RequestIssues();
+		}
+	}
+	break;
+	case WM_TRAYICON:
+	{
+		DebugPrint(L"message = WM_TRAYICON" << std::endl);
+		if (lParam == WM_RBUTTONUP)
+		{
+			DebugPrint(L"	WM_RBUTTONUP" << std::endl);
+			// 创建右键菜单
+			HMENU hMenu = CreatePopupMenu();
+			InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, ID_TRAY_SHOW_LOG, L"打开日志窗口");
+			InsertMenu(hMenu, 1, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);  // 分隔线
+			InsertMenu(hMenu, 2, MF_BYPOSITION | MF_STRING, ID_TRAY_EXIT, L"退出");
+
+			// 显示菜单
+			POINT pt;
+			GetCursorPos(&pt);
+			SetForegroundWindow(hWnd);
+			TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
+			PostMessage(hWnd, WM_NULL, 0, 0);
+			DestroyMenu(hMenu);
+		}
+		else if (lParam == WM_LBUTTONDBLCLK)
+		{
+			DebugPrint(L"	WM_LBUTTONDBLCLK" << std::endl);
+			// 双击显示/隐藏主窗口
+			if (IsWindowVisible(hWnd))
+			{
+				ShowWindow(hWnd, SW_HIDE);
+			}
+			else
+			{
+				ShowWindow(hWnd, SW_SHOW);
+				SetForegroundWindow(hWnd);
+			}
 		}
 	}
 	break;
