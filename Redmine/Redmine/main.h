@@ -5,9 +5,9 @@
 #define DebugPrint(message) \
     do { \
         std::wstringstream ss; \
-        ss << message; \
+        ss << __FUNCTION__ << message; \
         OutputDebugString(ss.str().c_str()); \
     } while(0)
 
-#define FunctionEntryLog DebugPrint(__FUNCTION__ << L" Entry" << std::endl);
-#define FunctionExitLog DebugPrint(__FUNCTION__ << L" Exit" << std::endl);
+#define FunctionEntryLog DebugPrint(L" Entry" << std::endl);
+#define FunctionExitLog DebugPrint(L" Exit" << std::endl);
