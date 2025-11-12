@@ -17,5 +17,6 @@
 #include <Python.h>
 #include <vector>
 
-#include "main.h"
+#include "logger.h"
 #include "redmine.h"
+#include "main.h"

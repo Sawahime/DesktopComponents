@@ -174,6 +174,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		case ID_TRAY_SHOW_LOG:
 			MessageBox(hWnd, L"显示日志窗口功能待实现", L"提示", MB_OK);
+			//logger->CreateLogWindow(hWnd);
 			break;
 		case ID_TRAY_EXIT:
 			DestroyWindow(hWnd);
