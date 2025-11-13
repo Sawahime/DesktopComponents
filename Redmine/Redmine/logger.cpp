@@ -55,7 +55,7 @@ void Logger::CreateLogWindow(HWND hParent) {
 	);
 	if (hFont) {
 		SendMessage(m_hEditLog, WM_SETFONT, (WPARAM)hFont, TRUE);
-		SendMessage(m_hEditLog, WM_SETTEXT, 0, (LPARAM)L"text demo");
+		SendMessage(m_hEditLog, WM_SETTEXT, 0, (LPARAM)L"TODO");
 	}
 	startY += textBoxHeight + spacing;
 #pragma endregion
