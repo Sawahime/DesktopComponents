@@ -128,10 +128,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// 让窗口不在任务栏显示
 	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
 
-	RedmineIssuesWidget* redmine = new RedmineIssuesWidget();
+	CManager* manager = new CManager();
+	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)manager);
+
+	RedmineIssuesWidget* redmine = manager->GetRedmine();
 	redmine->SetWindowHandle(hWnd);
 	redmine->RequestIssues();
-	SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)redmine);
 
 	SetTimer(hWnd, TIMER_ID_REDMINE, TIMER_INTERVAL_MS, nullptr);
 
@@ -154,7 +156,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	//FunctionEntryLog;
-	RedmineIssuesWidget* redmine = (RedmineIssuesWidget*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	CManager* manager = (CManager*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	RedmineIssuesWidget* redmine = nullptr;
+	Logger* logger = nullptr;
+
+	if (manager) {
+		redmine = manager->GetRedmine();
+		logger = manager->GetLogger();
+	}
 
 	static NOTIFYICONDATA nid = {};
 
@@ -173,8 +182,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DestroyWindow(hWnd);
 			break;
 		case ID_TRAY_SHOW_LOG:
-			MessageBox(hWnd, L"显示日志窗口功能待实现", L"提示", MB_OK);
-			//logger->CreateLogWindow(hWnd);
+			//MessageBox(hWnd, L"显示日志窗口功能待实现", L"提示", MB_OK);
+			logger->CreateLogWindow(hWnd);
 			break;
 		case ID_TRAY_EXIT:
 			DestroyWindow(hWnd);
@@ -206,8 +215,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		Shell_NotifyIcon(NIM_DELETE, &nid);
 
 		KillTimer(hWnd, TIMER_ID_REDMINE);
-		if (redmine) {
-			delete redmine;
+		if (manager) {
+			delete manager;
 			SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
 		}
 		PostQuitMessage(0);
