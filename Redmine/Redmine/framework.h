@@ -14,8 +14,11 @@
 #include <memory.h>
 #include <tchar.h>
 #include <sstream>
-#include <Python.h>
+#include <iostream>
 #include <vector>
+#include <shellapi.h>
+#include <unordered_map>
+#include <Python.h>
 
 #include "logger.h"
 #include "redmine.h"

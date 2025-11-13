@@ -1,5 +1,4 @@
 #include "framework.h"
-#include <iostream>
 
 
 void Logger::CreateLogWindow(HWND hParent) {
