@@ -138,8 +138,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		xPos, yPos, windowWidth, windowHeight,
 		nullptr, nullptr, hInstance, nullptr
 	);
-	if (!hWnd)
-	{
+	if (!hWnd) {
 		return FALSE;
 	}
 	// 让窗口不在任务栏显示
@@ -151,6 +150,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	RedmineIssuesWidget* redmine = manager->GetRedmine();
 	redmine->SetWindowHandle(hWnd);
 	redmine->RequestIssues();
+
+	Logger* logger = manager->GetLogger();
+	logger->CreateLogWindow(hWnd);
 
 	SetTimer(hWnd, TIMER_ID_REDMINE, TIMER_INTERVAL_MS, nullptr);
 
@@ -229,8 +231,7 @@ LRESULT EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 		DestroyWindow(hWnd);
 		break;
 	case ID_TRAY_SHOW_LOG:
-		//MessageBox(hWnd, L"显示日志窗口功能待实现", L"提示", MB_OK);
-		logger->CreateLogWindow(hWnd);
+		if (logger) logger->ShowLogWindow();
 		break;
 	case ID_TRAY_EXIT:
 		DestroyWindow(hWnd);
@@ -333,6 +334,10 @@ LRESULT EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	DebugPrint(L"message = WM_DESTROY" << std::endl);
 
 	CManager* manager = (CManager*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+	Logger* logger = nullptr;
+	if (manager) logger = manager->GetLogger();
+
+	if (logger) logger->DeleteLogWindow();
 
 	KillTimer(hWnd, TIMER_ID_REDMINE);
 	if (manager) {

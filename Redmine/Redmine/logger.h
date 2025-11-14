@@ -17,9 +17,41 @@
 #define IDC_BTN_COPY          1004
 #define IDC_BTN_SAVE          1005
 
+
+class EditBoxStreamBuf : public std::streambuf {
+public:
+	EditBoxStreamBuf(HWND hEdit) : m_hEdit(hEdit) {}
+
+protected:
+	virtual int_type overflow(int_type c) override {
+		if (c != traits_type::eof()) {
+			m_buffer += static_cast<char>(c);
+			if (c == '\n') {
+				int len = GetWindowTextLengthA(m_hEdit);
+				SendMessageA(m_hEdit, EM_SETSEL, len, len);
+				SendMessageA(m_hEdit, EM_REPLACESEL, FALSE, reinterpret_cast<LPARAM>(m_buffer.c_str()));
+				m_buffer.clear();
+			}
+		}
+		return c;
+	}
+
+private:
+	HWND m_hEdit;
+	std::string m_buffer;
+};
+
+
 class Logger {
 public:
 	void CreateLogWindow(HWND hParent);
+	void DeleteLogWindow();
+
+	void ShowLogWindow() const;
+	void HideLogWindow() const;
+
+	void RedirectCout();
+	void RestoreCout();
 
 private:
 	static LRESULT CALLBACK LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -31,4 +63,7 @@ private:
 	HWND m_hBtnClear;      // Çå¿Õ°´Å¥¾ä±ú
 	HWND m_hBtnCopy;       // ¸´ÖÆ°´Å¥¾ä±ú
 	HWND m_hBtnSave;       // ±£´æ°´Å¥¾ä±ú
+
+	std::streambuf* m_EditBoxBuf;
+	std::streambuf* m_OldCoutBuf;
 };

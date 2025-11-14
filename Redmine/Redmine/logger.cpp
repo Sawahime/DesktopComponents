@@ -24,9 +24,9 @@ void Logger::CreateLogWindow(HWND hParent) {
 
 	m_hWnd = CreateWindowW(
 		L"LogWindowClass", L"ÈÕÖ¾´°¿Ú",
-		WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+		WS_OVERLAPPEDWINDOW,
 		x, y, width, height,
-		hParent, nullptr, GetModuleHandle(NULL), nullptr
+		hParent, nullptr, GetModuleHandle(NULL), this
 	);
 	if (!m_hWnd) return;
 
@@ -54,8 +54,8 @@ void Logger::CreateLogWindow(HWND hParent) {
 	);
 	if (hFont) {
 		SendMessage(m_hEditLog, WM_SETFONT, (WPARAM)hFont, TRUE);
-		SendMessage(m_hEditLog, WM_SETTEXT, 0, (LPARAM)L"TODO");
 	}
+	RedirectCout();
 	startY += textBoxHeight + spacing;
 #pragma endregion
 
@@ -115,20 +115,57 @@ void Logger::CreateLogWindow(HWND hParent) {
 #pragma endregion
 }
 
+void Logger::DeleteLogWindow() {
+	RestoreCout();
+}
+
+
+void Logger::ShowLogWindow() const {
+	ShowWindow(m_hWnd, SW_SHOW);
+	//UpdateWindow(m_hWnd);
+}
+
+void Logger::HideLogWindow() const {
+	ShowWindow(m_hWnd, SW_HIDE);
+}
+
+
+void Logger::RedirectCout() {
+	if (!m_hEditLog) {
+		return;
+	}
+
+	m_EditBoxBuf = new EditBoxStreamBuf(m_hEditLog);
+	m_OldCoutBuf = std::cout.rdbuf(m_EditBoxBuf);
+}
+
+void Logger::RestoreCout() {
+	if (m_OldCoutBuf) std::cout.rdbuf(m_OldCoutBuf);
+	if (m_EditBoxBuf) delete m_EditBoxBuf;
+}
+
 
 LRESULT CALLBACK Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	static Logger* logger = nullptr;
+
 	switch (message) {
-	case WM_CREATE:
+	case WM_CREATE: {
 		std::cout << __FUNCTION__": " << "WM_CREATE" << std::endl;
+		LPCREATESTRUCT lpCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
+		logger = static_cast<Logger*>(lpCreateStruct->lpCreateParams);
+
+		if (logger) logger->ShowLogWindow();
 		break;
+	}
 	case WM_SIZE:
 		std::cout << __FUNCTION__": " << "WM_SIZE" << std::endl;
 		break;
 	case WM_COMMAND:
-		std::cout << __FUNCTION__": " << "WM_COMMAND" << std::endl;
+		//std::cout << __FUNCTION__": " << "WM_COMMAND" << std::endl;
 		break;
 	case WM_CLOSE:
 		std::cout << __FUNCTION__": " << "WM_CLOSE" << std::endl;
+		if (logger) logger->HideLogWindow();
 		break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
