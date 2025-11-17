@@ -52,6 +52,10 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 		return false;
 	}
 
+	// Set layered window attributes to support transparency
+	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+	SetLayeredWindowAttributes(hWnd, 0, 128, LWA_ALPHA);
+
 	// do not show the window in task bar
 	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
 
