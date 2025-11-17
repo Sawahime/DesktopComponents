@@ -37,7 +37,7 @@ protected:
 	}
 
 private:
-	HWND m_hEdit;
+	HWND m_hEdit = nullptr;
 	std::string m_buffer;
 };
 
@@ -54,10 +54,13 @@ public:
 	void RestoreCout();
 
 private:
-	static LRESULT CALLBACK LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK LogWndProc(HWND, UINT, WPARAM, LPARAM);
+
+	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM) const;
+
 
 private:
-	HWND m_hWnd;           // 主窗口句柄
+	HWND m_hWnd;           // 日志窗口句柄
 	HWND m_hEditLog;       // 日志文本框句柄
 	HWND m_hStaticSplitter;// 分割线句柄
 	HWND m_hBtnClear;      // 清空按钮句柄

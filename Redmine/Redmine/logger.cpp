@@ -161,7 +161,7 @@ LRESULT CALLBACK Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPAR
 		std::cout << __FUNCTION__": " << "WM_SIZE" << std::endl;
 		break;
 	case WM_COMMAND:
-		//std::cout << __FUNCTION__": " << "WM_COMMAND" << std::endl;
+		if (logger) logger->EvtCommand(hWnd, message, wParam, lParam);
 		break;
 	case WM_CLOSE:
 		std::cout << __FUNCTION__": " << "WM_CLOSE" << std::endl;
@@ -170,5 +170,19 @@ LRESULT CALLBACK Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPAR
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
+	return 0;
+}
+
+LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) const {
+	WORD cmd = LOWORD(wParam);
+	switch (cmd) {
+	case IDC_BTN_CLEAR:
+		break;
+	case IDC_BTN_COPY:
+		break;
+	case IDC_BTN_SAVE:
+		break;
+	}
+
 	return 0;
 }

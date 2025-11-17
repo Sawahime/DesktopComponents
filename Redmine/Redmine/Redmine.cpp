@@ -3,55 +3,68 @@
 #include <algorithm>
 
 
-bool RedmineIssuesWidget::InitializePython() {
-	Py_Initialize();
-	PyRun_SimpleString("import sys");
-	PyRun_SimpleString("sys.path.append('.')");
+extern RedmineIssuesWidget* g_redmine;
 
-	m_Module = PyImport_ImportModule("pyif");// python file name
-	if (m_Module == nullptr) {
-		DebugPrint(L"错误：无法导入模块 pyif" << std::endl);
-		return false;
-	}
 
-	m_Func = PyObject_GetAttrString(m_Module, "get_issues_by_assignee_name_cpp_intf");
-	if (m_Func == nullptr || PyCallable_Check(m_Func) == false) {
-		DebugPrint(L"错误：找不到函数或函数不可调用" << std::endl);
-		return false;
-	}
-
-	// Prepare the input param
-	m_ArgsTuple = PyTuple_New(1);// new an empty tuple
-	if (m_ArgsTuple == nullptr) {
-		DebugPrint(L"错误：PyTuple_New failed" << std::endl);
-		return false;
-	}
-	PyObject* arg1 = PyUnicode_FromWideChar(L"毅 陆", -1);
-	if (arg1 == nullptr) {
-		DebugPrint(L"错误：PyUnicode_FromWideChar failed" << std::endl);
-		return false;
-	}
-	// Inser pName to the tuple. Tuple steals reference, so do not Py_DECREF(Decrease Reference)
-	PyTuple_SetItem(m_ArgsTuple, 0, arg1);
-
-	return true;
+void RedmineIssuesWidget::InitMessageFunctionTable() {
+#define DefineMsgFunc(message, func) m_MessageTable[message] = [this](HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) { return this->func(hwnd, msg, wparam, lparam); };
+	DefineMsgFunc(WM_CREATE, EvtCreateWindow);
+	DefineMsgFunc(WM_DESTROY, EvtDestroyWindow);		// 发送退出消息并返回
+	DefineMsgFunc(WM_PAINT, EvtPaint);				// 绘制主窗口
+	DefineMsgFunc(WM_MOUSEWHEEL, EvtMouseWheel);
+	DefineMsgFunc(WM_COMMAND, EvtCommand);			// 处理应用程序菜单
+	DefineMsgFunc(WM_TIMER, EvtTimer);
+	DefineMsgFunc(WM_TRAYICON, EvtTrayNotify);
 }
 
+ATOM RedmineIssuesWidget::RegisterWindowClass() const {
+	WNDCLASSEXW wcex = { 0 };
+	wcex.cbSize = sizeof(WNDCLASSEX);
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WndProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = m_hInstance;
+	wcex.hIcon = LoadIcon(m_hInstance, MAKEINTRESOURCE(IDI_REDMINE));
+	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_REDMINE);
+	wcex.lpszClassName = m_szWindowClass;
+	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-void RedmineIssuesWidget::FinallizePython() {
-	if (m_ArgsTuple) {
-		Py_DECREF(m_ArgsTuple);
-		m_ArgsTuple = nullptr;
+	return RegisterClassExW(&wcex);
+}
+
+bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
+	int screenWidth = GetSystemMetrics(SM_CXFULLSCREEN);
+	int screenHeight = GetSystemMetrics(SM_CYFULLSCREEN);
+	int windowWidth = screenWidth / 4;
+	int windowHeight = screenHeight;
+	int xPos = screenWidth - windowWidth;
+	int yPos = 0;
+
+	HWND hWnd = CreateWindowW(
+		m_szWindowClass, m_szTitle, WS_OVERLAPPEDWINDOW,
+		xPos, yPos, windowWidth, windowHeight,
+		nullptr, nullptr, m_hInstance, this
+	);
+	if (!hWnd) {
+		return false;
 	}
-	if (m_Func) {
-		Py_DECREF(m_Func);
-		m_Func = nullptr;
-	}
-	if (m_Module) {
-		Py_DECREF(m_Module);
-		m_Module = nullptr;
-	}
-	Py_Finalize();
+
+	// do not show the window in task bar
+	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
+
+	m_hWnd = hWnd;
+	m_Logger->CreateLogWindow(hWnd);
+
+	RequestIssues();
+	SetTimer(hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
+
+	ShowWindow(hWnd, nCmdShow);
+	UpdateWindow(hWnd);
+
+	return true;
 }
 
 
@@ -63,12 +76,10 @@ void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 	m_IssuesRect.top = m_TitleRect.bottom;
 }
 
-
 void RedmineIssuesWidget::Draw(HDC hdc) {
 	DrawTitle(hdc);
 	DrawIssuesList(hdc);
 }
-
 
 void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	// Title
@@ -84,7 +95,6 @@ void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	SelectObject(hdc, hOldFont);
 	DeleteObject(hFont);
 }
-
 
 void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 	// Set the background of the issues area
@@ -123,7 +133,6 @@ void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 		DrawSingleIssueCard(hdc, m_IssuesList[i], cardRect);
 	}
 }
-
 
 void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect) {
 	// Draw the background of the card
@@ -171,7 +180,6 @@ void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue,
 	DeleteObject(hNormalFont);
 	DeleteObject(hSmallFont);
 }
-
 
 void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect) {
 	int actualProgress = 0;
@@ -270,55 +278,55 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, REC
 }
 
 
-std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
-	if (str.empty()) return L"";
+bool RedmineIssuesWidget::InitializePython() {
+	Py_Initialize();
+	PyRun_SimpleString("import sys");
+	PyRun_SimpleString("sys.path.append('.')");
 
-	int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
-	if (len == 0) return L"";
-
-	std::wstring wstr(len - 1, 0);
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, &wstr[0], len);
-	return wstr;
-}
-
-std::string RedmineIssuesWidget::WCharToString(const wchar_t* wstr) {
-	if (wstr == nullptr) {
-		return "";
+	m_Module = PyImport_ImportModule("pyif");// python file name
+	if (m_Module == nullptr) {
+		DebugPrint(L"错误：无法导入模块 pyif" << std::endl);
+		return false;
 	}
 
-	int bufferSize = WideCharToMultiByte(CP_ACP, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
-	if (bufferSize == 0) {
-		return "";
+	m_Func = PyObject_GetAttrString(m_Module, "get_issues_by_assignee_name_cpp_intf");
+	if (m_Func == nullptr || PyCallable_Check(m_Func) == false) {
+		DebugPrint(L"错误：找不到函数或函数不可调用" << std::endl);
+		return false;
 	}
 
-	std::vector<char> buffer(bufferSize);
-	WideCharToMultiByte(CP_ACP, 0, wstr, -1, buffer.data(), bufferSize, nullptr, nullptr);
-
-	return std::string(buffer.data());
-}
-
-
-void RedmineIssuesWidget::HandleMouseWheel(int delta)
-{
-	int scrollAmount = -delta / WHEEL_DELTA; // Change to scroll rows
-	int offset = m_ContentStartYOffset - scrollAmount * 30; // Scroll 30 pixels each time
-
-	// upperLimit <= start_y_offset <= lowerLimit
-	int upperLimit = (m_IssuesRect.bottom - m_IssuesRect.top) - m_TotalContentHeight;
-	int lowerLimit = 0;
-	offset = max(upperLimit, offset);
-	offset = min(lowerLimit, offset);
-
-	if (offset != m_ContentStartYOffset) {
-		m_ContentStartYOffset = offset;
-
-		// Redraw
-		if (m_hWnd) {
-			InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);// it will trigger case WM_PAINT to redraw
-		}
+	// Prepare the input param
+	m_ArgsTuple = PyTuple_New(1);// new an empty tuple
+	if (m_ArgsTuple == nullptr) {
+		DebugPrint(L"错误：PyTuple_New failed" << std::endl);
+		return false;
 	}
+	PyObject* arg1 = PyUnicode_FromWideChar(L"毅 陆", -1);
+	if (arg1 == nullptr) {
+		DebugPrint(L"错误：PyUnicode_FromWideChar failed" << std::endl);
+		return false;
+	}
+	// Inser pName to the tuple. Tuple steals reference, so do not Py_DECREF(Decrease Reference)
+	PyTuple_SetItem(m_ArgsTuple, 0, arg1);
+
+	return true;
 }
 
+void RedmineIssuesWidget::FinallizePython() {
+	if (m_ArgsTuple) {
+		Py_DECREF(m_ArgsTuple);
+		m_ArgsTuple = nullptr;
+	}
+	if (m_Func) {
+		Py_DECREF(m_Func);
+		m_Func = nullptr;
+	}
+	if (m_Module) {
+		Py_DECREF(m_Module);
+		m_Module = nullptr;
+	}
+	Py_Finalize();
+}
 
 void RedmineIssuesWidget::RequestIssues() {
 	if (m_Func == nullptr) {
@@ -409,31 +417,6 @@ void RedmineIssuesWidget::RequestIssues() {
 	Py_DECREF(pResult);
 }
 
-
-std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
-	PyObject* pValue = PyDict_GetItemString(dict, key);
-	if (pValue) {
-		if (PyUnicode_Check(pValue)) {
-			PyObject* temp_bytes = PyUnicode_AsEncodedString(pValue, "ANSI", "strict");
-			if (temp_bytes != NULL) {
-				std::string result = PyBytes_AS_STRING(temp_bytes);
-				Py_DECREF(temp_bytes);
-				return result;
-			}
-		}
-		else if (PyLong_Check(pValue)) {
-			long value = PyLong_AsLong(pValue);
-			return std::to_string(value);
-		}
-		else if (PyFloat_Check(pValue)) {
-			double value = PyFloat_AsDouble(pValue);
-			return std::to_string(static_cast<int>(value));
-		}
-	}
-	return "";
-}
-
-
 void RedmineIssuesWidget::SortIssues() {
 	std::unordered_map<std::string, int> priorityMap = {
 		{"Immediate", 0},
@@ -461,4 +444,223 @@ void RedmineIssuesWidget::SortIssues() {
 			return priorityA < priorityB;
 		}
 	);
+}
+
+
+LRESULT RedmineIssuesWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	if (auto it = g_redmine->m_MessageTable.find(message); it != g_redmine->m_MessageTable.end()) return it->second(hWnd, message, wParam, lParam);
+	else return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+
+LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	g_redmine->InitNotifyIconData(hWnd);
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	int wmId = LOWORD(wParam);
+	switch (wmId) {
+	case IDM_ABOUT:
+		DialogBox(g_redmine->m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+		break;
+	case IDM_EXIT:
+		DestroyWindow(hWnd);
+		break;
+	case ID_TRAY_SHOW_LOG:
+		g_redmine->m_Logger->ShowLogWindow();
+		break;
+	case ID_TRAY_EXIT:
+		DestroyWindow(hWnd);
+		break;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtMouseWheel(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	int delta = GET_WHEEL_DELTA_WPARAM(wParam);// up=120, down=-120
+	g_redmine->HandleMouseWheel(delta);
+
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	std::cout << __FUNCTION__": " << "Entry" << std::endl;
+
+	PAINTSTRUCT ps;
+	HDC hdc = BeginPaint(hWnd, &ps);// Handle to Device Context
+
+	g_redmine->InitWindowRectArea(hWnd);
+	g_redmine->Draw(hdc);
+
+	EndPaint(hWnd, &ps);
+
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	std::cout << __FUNCTION__": " << "Entry" << std::endl;
+
+	g_redmine->RequestIssues();
+
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	if (lParam == WM_RBUTTONUP) {// Right Button Up
+		std::cout << __FUNCTION__": " << "WM_RBUTTONUP" << std::endl;
+
+		// Create right button menu
+		HMENU hMenu = CreatePopupMenu();
+		InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, ID_TRAY_SHOW_LOG, L"打开日志窗口");
+		InsertMenu(hMenu, 1, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);  // split line
+		InsertMenu(hMenu, 2, MF_BYPOSITION | MF_STRING, ID_TRAY_EXIT, L"退出");
+
+		// Show menu
+		POINT pt;
+		GetCursorPos(&pt);
+		SetForegroundWindow(hWnd);
+		TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);// hold on and wait for click
+		PostMessage(hWnd, WM_NULL, 0, 0);
+		DestroyMenu(hMenu);
+	}
+	else if (lParam == WM_LBUTTONDBLCLK) {// Left Button Double-Click
+		std::cout << __FUNCTION__": " << "WM_LBUTTONDBLCLK" << std::endl;
+		if (IsWindowVisible(hWnd)) {
+			ShowWindow(hWnd, SW_HIDE);
+		}
+		else {
+			ShowWindow(hWnd, SW_SHOW);
+			SetForegroundWindow(hWnd);
+		}
+	}
+
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	std::cout << __FUNCTION__": " << "Entry" << std::endl;
+
+	g_redmine->m_Logger->DeleteLogWindow();
+
+	KillTimer(hWnd, g_redmine->m_TimerId);
+	Shell_NotifyIcon(NIM_DELETE, &g_redmine->m_NotifyIconData);
+
+	PostQuitMessage(0);
+
+	return 0;
+}
+
+
+INT_PTR RedmineIssuesWidget::About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message) {
+	case WM_INITDIALOG:
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
+}
+
+
+void RedmineIssuesWidget::InitNotifyIconData(HWND hWnd) {
+	// Init system tray icon
+	m_NotifyIconData.cbSize = sizeof(NOTIFYICONDATA);
+	m_NotifyIconData.hWnd = hWnd;
+	m_NotifyIconData.uID = ID_TRAY_ICON;
+	m_NotifyIconData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	m_NotifyIconData.uCallbackMessage = WM_TRAYICON;
+	m_NotifyIconData.hIcon = LoadIcon(m_hInstance, MAKEINTRESOURCE(IDI_TRAY_ICON));
+	wcscpy_s(m_NotifyIconData.szTip, L"Redmine Issues Widget");
+
+	Shell_NotifyIcon(NIM_ADD, &m_NotifyIconData);
+}
+
+void RedmineIssuesWidget::DeInitNotifyIconData() {
+	Shell_NotifyIcon(NIM_DELETE, &m_NotifyIconData);
+}
+
+void RedmineIssuesWidget::HandleMouseWheel(int delta) {
+	int scrollAmount = -delta / WHEEL_DELTA; // Change to scroll rows
+	int offset = m_ContentStartYOffset - scrollAmount * 30; // Scroll 30 pixels each time
+
+	// upperLimit <= start_y_offset <= lowerLimit
+	int upperLimit = (m_IssuesRect.bottom - m_IssuesRect.top) - m_TotalContentHeight;
+	int lowerLimit = 0;
+	offset = max(upperLimit, offset);
+	offset = min(lowerLimit, offset);
+
+	if (offset != m_ContentStartYOffset) {
+		m_ContentStartYOffset = offset;
+
+		// Redraw
+		if (m_hWnd) {
+			InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);// it will trigger case WM_PAINT to redraw
+		}
+	}
+}
+
+std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
+	if (str.empty()) return L"";
+
+	int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
+	if (len == 0) return L"";
+
+	std::wstring wstr(len - 1, 0);
+	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, &wstr[0], len);
+	return wstr;
+}
+
+std::string RedmineIssuesWidget::WCharToString(const wchar_t* wstr) {
+	if (wstr == nullptr) {
+		return "";
+	}
+
+	int bufferSize = WideCharToMultiByte(CP_ACP, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+	if (bufferSize == 0) {
+		return "";
+	}
+
+	std::vector<char> buffer(bufferSize);
+	WideCharToMultiByte(CP_ACP, 0, wstr, -1, buffer.data(), bufferSize, nullptr, nullptr);
+
+	return std::string(buffer.data());
+}
+
+std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
+	PyObject* pValue = PyDict_GetItemString(dict, key);
+	if (pValue) {
+		if (PyUnicode_Check(pValue)) {
+			PyObject* temp_bytes = PyUnicode_AsEncodedString(pValue, "ANSI", "strict");
+			if (temp_bytes != NULL) {
+				std::string result = PyBytes_AS_STRING(temp_bytes);
+				Py_DECREF(temp_bytes);
+				return result;
+			}
+		}
+		else if (PyLong_Check(pValue)) {
+			long value = PyLong_AsLong(pValue);
+			return std::to_string(value);
+		}
+		else if (PyFloat_Check(pValue)) {
+			double value = PyFloat_AsDouble(pValue);
+			return std::to_string(static_cast<int>(value));
+		}
+	}
+	return "";
 }

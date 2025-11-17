@@ -18,8 +18,9 @@
 #include <vector>
 #include <shellapi.h>
 #include <unordered_map>
+#include <functional>
 #include <Python.h>
 
+#include "main.h"
 #include "logger.h"
 #include "redmine.h"
-#include "main.h"
