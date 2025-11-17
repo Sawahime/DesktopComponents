@@ -58,6 +58,7 @@ private:
 	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM) const;
 
 	void CopyLogToClipboard() const;
+	void SaveLog() const;
 
 private:
 	HWND m_hWnd;           // ÈÕÖ¾´°¿Ú¾ä±ú

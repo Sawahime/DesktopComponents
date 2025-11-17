@@ -1,5 +1,6 @@
 #include "framework.h"
-
+#include <chrono>
+#include <fstream>
 
 void Logger::CreateLogWindow(HWND hParent) {
 	if (!hParent) return;
@@ -183,6 +184,7 @@ LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 		CopyLogToClipboard();
 		break;
 	case IDC_BTN_SAVE:
+		SaveLog();
 		break;
 	}
 
@@ -217,5 +219,60 @@ void Logger::CopyLogToClipboard() const {
 	}
 	else {
 		std::cout << "Failed to open clipboard" << std::endl;
+	}
+}
+
+void Logger::SaveLog() const {
+	if (!m_hEditLog) {
+		std::cout << "No log window available" << std::endl;
+		return;
+	}
+
+	// 获取编辑框文本长度
+	int textLength = GetWindowTextLengthA(m_hEditLog);
+	if (textLength <= 0) {
+		std::cout << "No content to save" << std::endl;
+		return;
+	}
+
+	// 分配缓冲区
+	std::vector<char> buffer(textLength + 1);
+	GetWindowTextA(m_hEditLog, buffer.data(), buffer.size());
+
+	// 生成文件名（带时间戳）
+	auto now = std::chrono::system_clock::now();
+	auto time_t = std::chrono::system_clock::to_time_t(now);
+	std::tm tm;
+	localtime_s(&tm, &time_t);
+
+	char filename[256];
+	snprintf(filename, sizeof(filename),
+		"log_%04d%02d%02d_%02d%02d%02d.txt",
+		tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+		tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+	// 获取可执行文件目录
+	char exePath[MAX_PATH];
+	GetModuleFileNameA(nullptr, exePath, MAX_PATH);
+
+	// 提取目录路径
+	std::string directory = exePath;
+	size_t lastSlash = directory.find_last_of("\\/");
+	if (lastSlash != std::string::npos) {
+		directory = directory.substr(0, lastSlash + 1);
+	}
+
+	// 完整文件路径
+	std::string fullPath = directory + filename;
+
+	// 保存文件
+	std::ofstream file(fullPath, std::ios::out | std::ios::binary);
+	if (file.is_open()) {
+		file.write(buffer.data(), textLength);
+		file.close();
+		std::cout << "Log saved to: " << fullPath << std::endl;
+	}
+	else {
+		std::cout << "Failed to save log to: " << fullPath << std::endl;
 	}
 }
