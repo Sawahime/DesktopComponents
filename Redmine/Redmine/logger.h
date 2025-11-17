@@ -57,7 +57,8 @@ private:
 	static LRESULT CALLBACK LogWndProc(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM) const;
 
-	void CopyLogToClipboard() const;
+	void ClearLog() const;
+	void CopyLog() const;
 	void SaveLog() const;
 
 private:

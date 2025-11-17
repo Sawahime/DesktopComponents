@@ -178,10 +178,10 @@ LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	WORD cmd = LOWORD(wParam);
 	switch (cmd) {
 	case IDC_BTN_CLEAR:
-		SetWindowTextA(m_hEditLog, "");
+		ClearLog();
 		break;
 	case IDC_BTN_COPY:
-		CopyLogToClipboard();
+		CopyLog();
 		break;
 	case IDC_BTN_SAVE:
 		SaveLog();
@@ -192,7 +192,11 @@ LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 }
 
 
-void Logger::CopyLogToClipboard() const {
+void Logger::ClearLog() const {
+	SetWindowTextA(m_hEditLog, "");
+}
+
+void Logger::CopyLog() const {
 	if (OpenClipboard(nullptr)) {
 		EmptyClipboard();
 
