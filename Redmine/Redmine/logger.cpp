@@ -177,6 +177,7 @@ LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	WORD cmd = LOWORD(wParam);
 	switch (cmd) {
 	case IDC_BTN_CLEAR:
+		SetWindowTextA(m_hEditLog, "");
 		break;
 	case IDC_BTN_COPY:
 		break;
