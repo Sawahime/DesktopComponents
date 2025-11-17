@@ -47,16 +47,6 @@ int APIENTRY wWinMain(
 
 	// TODO: 在此处放置代码。
 
-	{
-		// 分配控制台
-		AllocConsole();
-
-		FILE* f;
-		freopen_s(&f, "CONOUT$", "w", stdout);
-
-		std::cout << "Hello from Windows桌面程序!" << std::endl;
-	}
-
 	// 初始化全局字符串
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_REDMINE, szWindowClass, MAX_LOADSTRING);
