@@ -50,14 +50,14 @@ public:
 	void ShowLogWindow() const;
 	void HideLogWindow() const;
 
+private:
 	void RedirectCout();
 	void RestoreCout();
 
-private:
 	static LRESULT CALLBACK LogWndProc(HWND, UINT, WPARAM, LPARAM);
-
 	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM) const;
 
+	void CopyLogToClipboard() const;
 
 private:
 	HWND m_hWnd;           // ÈÕÖ¾´°¿Ú¾ä±ú

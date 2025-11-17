@@ -145,7 +145,7 @@ void Logger::RestoreCout() {
 }
 
 
-LRESULT CALLBACK Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	static Logger* logger = nullptr;
 
 	switch (message) {
@@ -180,10 +180,42 @@ LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 		SetWindowTextA(m_hEditLog, "");
 		break;
 	case IDC_BTN_COPY:
+		CopyLogToClipboard();
 		break;
 	case IDC_BTN_SAVE:
 		break;
 	}
 
 	return 0;
+}
+
+
+void Logger::CopyLogToClipboard() const {
+	if (OpenClipboard(nullptr)) {
+		EmptyClipboard();
+
+		int textLength = GetWindowTextLengthA(m_hEditLog);
+		if (textLength > 0) {
+			HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, textLength + 1);
+			if (hGlobal) {
+				char* pGlobal = static_cast<char*>(GlobalLock(hGlobal));// lock the memory and return a pointer
+				if (pGlobal) GetWindowTextA(m_hEditLog, pGlobal, textLength + 1);
+				GlobalUnlock(hGlobal);
+
+				SetClipboardData(CF_TEXT, hGlobal);
+				std::cout << "Log content copied to clipboard" << std::endl;
+			}
+			else {
+				std::cout << "Failed to allocate memory for clipboard" << std::endl;
+			}
+		}
+		else {
+			std::cout << "No content to copy" << std::endl;
+		}
+
+		CloseClipboard();
+	}
+	else {
+		std::cout << "Failed to open clipboard" << std::endl;
+	}
 }
