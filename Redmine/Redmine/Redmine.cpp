@@ -368,9 +368,6 @@ void RedmineIssuesWidget::RequestIssues() {
 	}
 
 	Py_ssize_t count = PyList_Size(pResult);
-	std::string result = "Totally " + std::to_string(count) + " issues for the assignor\n";
-	result += "================================================================================\n";
-
 	for (Py_ssize_t i = 0; i < count; i++) {
 		PyObject* pIssue = PyList_GetItem(pResult, i);
 		if (PyDict_Check(pIssue) == false) {
@@ -392,26 +389,6 @@ void RedmineIssuesWidget::RequestIssues() {
 		std::string project = ParsePyDictValueByKey(pIssue, "project");
 		std::string tracker = ParsePyDictValueByKey(pIssue, "tracker");
 		std::string description = ParsePyDictValueByKey(pIssue, "description");
-
-		// Debug Info
-		result += "\n" + std::to_string(i + 1) + ". 问题 #" + id + "\n";
-		result += "   主题: " + subject + "\n";
-		result += "   状态: " + status + "\n";
-		result += "   优先级: " + priority + "\n";
-		result += "   作者: " + author + "\n";
-		result += "   分配给: " + assigned_to + "\n";
-		result += "   进度: " + done_ratio + "%\n";
-		result += "   创建时间: " + created_on + "\n";
-		result += "   更新时间: " + updated_on + "\n";
-		result += "   计划开始: " + start_date + "\n";
-		result += "   计划完成: " + due_date + "\n";
-		result += "   项目: " + project + "\n";
-		result += "   类型: " + tracker + "\n";
-		std::string desc_preview = description.length() > 150 ? description.substr(0, 150) + "..." : description;
-		result += "   描述: " + desc_preview + "\n";
-		result += "--------------------------------------------------------------------------------\n";
-		std::cout << result << std::endl;
-		result.clear();
 
 		ISSUES_INFO issue;
 		issue.id = id;
@@ -535,8 +512,6 @@ LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, 
 
 
 LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	std::cout << __FUNCTION__": " << "Entry" << std::endl;
-
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);// Handle to Device Context
 
@@ -550,8 +525,6 @@ LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LP
 
 
 LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	std::cout << __FUNCTION__": " << "Entry" << std::endl;
-
 	g_redmine->RequestIssues();
 
 	return 0;
