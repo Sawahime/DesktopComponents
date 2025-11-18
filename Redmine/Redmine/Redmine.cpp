@@ -1,7 +1,8 @@
 ﻿#include "framework.h"
 #include "redmine.h"
 #include <algorithm>
-
+#include <shellscalingapi.h>
+#pragma comment(lib, "Shcore.lib")
 
 extern RedmineIssuesWidget* g_redmine;
 
@@ -11,7 +12,6 @@ void RedmineIssuesWidget::InitMessageFunctionTable() {
 	DefineMsgFunc(WM_CREATE, EvtCreateWindow);
 	DefineMsgFunc(WM_DESTROY, EvtDestroyWindow);		// 发送退出消息并返回
 	DefineMsgFunc(WM_PAINT, EvtPaint);				// 绘制主窗口
-	DefineMsgFunc(WM_MOUSEWHEEL, EvtMouseWheel);
 	DefineMsgFunc(WM_COMMAND, EvtCommand);			// 处理应用程序菜单
 	DefineMsgFunc(WM_TIMER, EvtTimer);
 	DefineMsgFunc(WM_TRAYICON, EvtTrayNotify);
@@ -36,6 +36,8 @@ ATOM RedmineIssuesWidget::RegisterWindowClass() const {
 }
 
 bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
+	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+
 	int screenWidth = GetSystemMetrics(SM_CXFULLSCREEN);
 	int screenHeight = GetSystemMetrics(SM_CYFULLSCREEN);
 	int windowWidth = screenWidth / 4;
@@ -52,12 +54,17 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 		return false;
 	}
 
-	// Set layered window attributes to support transparency
-	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-	SetLayeredWindowAttributes(hWnd, 0, 128, LWA_ALPHA);
+	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
-	// do not show the window in task bar
+	// Set the layered window style to support the adjustment of opacity
+	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+	SetLayeredWindowAttributes(hWnd, 0, m_Opacity, LWA_ALPHA);
+
+	// Do not show the window in task bar
 	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
+
+	// hook mouse message for scrolling screen
+	m_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 
 	m_hWnd = hWnd;
 	m_Logger->CreateLogWindow(hWnd);
@@ -457,6 +464,42 @@ LRESULT RedmineIssuesWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 }
 
 
+LRESULT RedmineIssuesWidget::MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode >= 0) {
+		if (wParam == WM_MOUSEWHEEL) {
+			MSLLHOOKSTRUCT* p = (MSLLHOOKSTRUCT*)lParam;
+
+			RECT rect;
+			GetWindowRect(g_redmine->m_hWnd, &rect);
+
+			if (PtInRect(&rect, p->pt)) {
+				SHORT delta = HIWORD(p->mouseData);// up=120, down=-120
+				g_redmine->HandleMouseWheel(delta);
+			}
+		}
+	}
+
+	return CallNextHookEx(g_redmine->m_hMouseHook, nCode, wParam, lParam);
+}
+
+
+INT_PTR RedmineIssuesWidget::About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+	UNREFERENCED_PARAMETER(lParam);
+	switch (message) {
+	case WM_INITDIALOG:
+		return (INT_PTR)TRUE;
+
+	case WM_COMMAND:
+		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
+			EndDialog(hDlg, LOWORD(wParam));
+			return (INT_PTR)TRUE;
+		}
+		break;
+	}
+	return (INT_PTR)FALSE;
+}
+
+
 LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	g_redmine->InitNotifyIconData(hWnd);
 	return 0;
@@ -481,14 +524,6 @@ LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, 
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
-
-	return 0;
-}
-
-
-LRESULT RedmineIssuesWidget::EvtMouseWheel(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	int delta = GET_WHEEL_DELTA_WPARAM(wParam);// up=120, down=-120
-	g_redmine->HandleMouseWheel(delta);
 
 	return 0;
 }
@@ -562,23 +597,6 @@ LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wP
 	PostQuitMessage(0);
 
 	return 0;
-}
-
-
-INT_PTR RedmineIssuesWidget::About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message) {
-	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
-
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
-		}
-		break;
-	}
-	return (INT_PTR)FALSE;
 }
 
 

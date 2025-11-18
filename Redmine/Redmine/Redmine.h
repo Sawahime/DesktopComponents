@@ -54,11 +54,11 @@ public:// Setter and Getter
 private:
 	static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 	static INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
+	static LRESULT CALLBACK MouseProc(int, WPARAM, LPARAM);
 
 	std::unordered_map<UINT, std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)>> m_MessageTable;
 	LRESULT EvtCreateWindow(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM);
-	LRESULT EvtMouseWheel(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtPaint(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTimer(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTrayNotify(HWND, UINT, WPARAM, LPARAM);
@@ -79,6 +79,8 @@ private:
 	NOTIFYICONDATA m_NotifyIconData = { 0 };
 	WCHAR m_szTitle[MAX_LOADSTRING] = { 0 };
 	WCHAR m_szWindowClass[MAX_LOADSTRING] = { 0 };
+	HHOOK m_hMouseHook;
+	BYTE m_Opacity = 128;
 
 	PyObject* m_Module = nullptr;
 	PyObject* m_Func = nullptr;
