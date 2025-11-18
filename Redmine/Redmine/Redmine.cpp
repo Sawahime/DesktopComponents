@@ -36,7 +36,13 @@ ATOM RedmineIssuesWidget::RegisterWindowClass() const {
 }
 
 bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
-	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+	switch (SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE)) {
+	case S_OK: // The DPI awareness for the app was set successfully
+		break;
+	case E_INVALIDARG: // The value passed in is not valid.
+	case E_ACCESSDENIED: // The DPI awareness is already set, either by calling this API previously or through the application (.exe) manifest.
+		return false;
+	}
 
 	int screenWidth = GetSystemMetrics(SM_CXFULLSCREEN);
 	int screenHeight = GetSystemMetrics(SM_CYFULLSCREEN);
