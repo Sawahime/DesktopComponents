@@ -51,35 +51,34 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 	int xPos = screenWidth - windowWidth;
 	int yPos = 0;
 
-	HWND hWnd = CreateWindowW(
+	m_hWnd = CreateWindowW(
 		m_szWindowClass, m_szTitle, WS_OVERLAPPEDWINDOW,
 		xPos, yPos, windowWidth, windowHeight,
 		nullptr, nullptr, m_hInstance, this
 	);
-	if (!hWnd) {
+	if (!m_hWnd) {
 		return false;
 	}
 
-	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
+	SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
 	// Set the layered window style to support the adjustment of opacity
-	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-	SetLayeredWindowAttributes(hWnd, 0, m_Opacity, LWA_ALPHA);
+	SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+	SetLayeredWindowAttributes(m_hWnd, 0, m_Opacity, LWA_ALPHA);
 
 	// Do not show the window in task bar
-	SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
+	SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
 
 	// hook mouse message for scrolling screen
 	m_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 
-	m_hWnd = hWnd;
-	m_Logger->CreateLogWindow(hWnd);
+	m_Logger->CreateLogWindow(m_hWnd);
 
 	RequestIssues();
-	SetTimer(hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
+	SetTimer(m_hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
 
-	ShowWindow(hWnd, nCmdShow);
-	UpdateWindow(hWnd);
+	ShowWindow(m_hWnd, nCmdShow);
+	UpdateWindow(m_hWnd);
 
 	return true;
 }
