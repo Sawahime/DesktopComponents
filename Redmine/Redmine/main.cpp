@@ -1,6 +1,11 @@
 ﻿#include "framework.h"
+#include "main.h"
+#include "logger.h"
+#include "redmine.h"
+
 
 RedmineIssuesWidget* g_redmine = nullptr;
+
 
 int APIENTRY wWinMain(
 	_In_ HINSTANCE		hInstance,

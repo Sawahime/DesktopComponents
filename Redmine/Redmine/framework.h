@@ -15,12 +15,20 @@
 #include <tchar.h>
 #include <sstream>
 #include <iostream>
+#include <string>
 #include <vector>
+#include <chrono>
+#include <fstream>
 #include <shellapi.h>
 #include <unordered_map>
 #include <functional>
 #include <Python.h>
+#include <algorithm>
+#include <shellscalingapi.h>
+#pragma comment(lib, "Shcore.lib")
+#include <httplib.h>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
-#include "main.h"
-#include "logger.h"
-#include "redmine.h"
+#include "resource.h"
+#include "encoding.h"

@@ -1,6 +1,6 @@
 #include "framework.h"
-#include <chrono>
-#include <fstream>
+#include "logger.h"
+
 
 void Logger::CreateLogWindow(HWND hParent) {
 	if (!hParent) return;

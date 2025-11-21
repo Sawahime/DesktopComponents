@@ -1,8 +1,7 @@
 ﻿#include "framework.h"
+#include "logger.h"
 #include "redmine.h"
-#include <algorithm>
-#include <shellscalingapi.h>
-#pragma comment(lib, "Shcore.lib")
+
 
 extern RedmineIssuesWidget* g_redmine;
 
@@ -76,6 +75,8 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 
 	RequestIssues();
 	SetTimer(m_hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
+
+	testrequest();
 
 	ShowWindow(m_hWnd, nCmdShow);
 	UpdateWindow(m_hWnd);
@@ -532,9 +533,7 @@ LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LP
 
 
 LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	if (lParam == WM_RBUTTONUP) {// Right Button Up
-		std::cout << __FUNCTION__": " << "WM_RBUTTONUP" << std::endl;
-
+	if (lParam == WM_RBUTTONUP) {// Right mouse button Up
 		// Create right button menu
 		HMENU hMenu = CreatePopupMenu();
 		InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, ID_TRAY_SHOW_LOG, L"打开日志窗口");
@@ -549,8 +548,7 @@ LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wPara
 		PostMessage(hWnd, WM_NULL, 0, 0);
 		DestroyMenu(hMenu);
 	}
-	else if (lParam == WM_LBUTTONDBLCLK) {// Left Button Double-Click
-		std::cout << __FUNCTION__": " << "WM_LBUTTONDBLCLK" << std::endl;
+	else if (lParam == WM_LBUTTONDBLCLK) {// Left mouse button double-click
 		if (IsWindowVisible(hWnd)) {
 			ShowWindow(hWnd, SW_HIDE);
 		}
@@ -663,4 +661,115 @@ std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const cha
 		}
 	}
 	return "";
+}
+
+
+
+json RedmineIssuesWidget::get_issues(int limit = 100, int offset = 0) {
+	try {
+		httplib::Client cli(m_HostUrl, m_Port);
+
+		httplib::Params params = {
+			{"limit", std::to_string(limit)},
+			{"offset", std::to_string(offset)}
+		};
+
+		httplib::Headers headers;
+		if (!m_ApiKey.empty()) {
+			headers = { {"X-Redmine-API-Key", m_ApiKey} };
+		}
+
+		auto res = cli.Get("/issues.json", params, headers);
+		if (!res) {
+			std::cerr << "请求错误: 无法连接到服务器" << std::endl;
+			return nullptr;
+		}
+		if (res->status != 200) {
+			std::cerr << "请求错误: HTTP " << res->status << std::endl;
+			return nullptr;
+		}
+
+		return json::parse(res->body);
+	}
+	catch (const std::exception& e) {
+		std::cerr << "请求错误: " << e.what() << std::endl;
+		return nullptr;
+	}
+}
+
+json RedmineIssuesWidget::get_all_issues(int limit = 100) {
+	json all_issues = json::array();
+	int offset = 0;
+
+	while (true) {
+		json ret = get_issues(limit, offset);
+		if (ret.is_null()) {
+			break;
+		}
+
+		if (!ret.contains("issues") || !ret["issues"].is_array()) {
+			break;
+		}
+
+		json issues = ret["issues"];
+		for (const auto& issue : issues) {
+			all_issues.push_back(issue);
+		}
+
+		if (issues.size() < static_cast<size_t>(limit)) {
+			break;
+		}
+		else {
+			offset += issues.size();
+		}
+	}
+
+	return all_issues;
+}
+
+json RedmineIssuesWidget::get_all_issues_by_assignee_name(std::string assignee_name) {
+	json all_issues = json::array();
+	int limit = 100;
+	int offset = 0;
+
+	while (true) {
+		json ret = get_issues(limit, offset);
+		if (ret.is_null()) {
+			break;
+		}
+
+		if (!ret.contains("issues") || !ret["issues"].is_array()) {
+			break;
+		}
+
+		json issues = ret["issues"];
+		for (const auto& issue : issues) {
+			if (issue.contains("assigned_to") &&
+				!issue["assigned_to"].is_null() &&
+				issue["assigned_to"].contains("name") &&
+				issue["assigned_to"]["name"].is_string() &&
+				issue["assigned_to"]["name"] == assignee_name)
+			{
+				all_issues.push_back(issue);
+			}
+		}
+
+		if (issues.size() < static_cast<size_t>(limit)) {
+			break;
+		}
+		else {
+			offset += issues.size();
+		}
+	}
+
+	return all_issues;
+}
+
+void RedmineIssuesWidget::testrequest() {
+	SetApiKey("5f46eaf59a601436e657869dfadf68cf416e8602");
+	json issues = get_all_issues_by_assignee_name(EncodingConverter::local_to_utf8("毅 陆"));
+	std::cout << "issues size=" << issues.size() << std::endl;
+	for (const auto& issue : issues) {
+		std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
+	}
 }

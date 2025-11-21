@@ -2,7 +2,6 @@
 
 constexpr auto MAX_LOADSTRING = 100;
 
-
 class RedmineIssuesWidget {
 private:
 	typedef struct _ISSUES_INFO {
@@ -47,7 +46,15 @@ public:
 	void FinallizePython();
 	void RequestIssues();
 
+	json get_issues(int, int);
+	json get_all_issues(int);
+	json get_all_issues_by_assignee_name(std::string);
+	void testrequest();
+
 public:// Setter and Getter
+	void SetUserId(const int& id) { m_UserId = id; }
+	void SetUserName(const std::string& name) { m_UserName = name; }
+	void SetApiKey(const std::string& api_key) { m_ApiKey = api_key; }
 	void SetWindowHandle(HWND hWnd) { m_hWnd = hWnd; }
 	HWND GetWindowHandle() const { return m_hWnd; }
 
@@ -74,6 +81,12 @@ private:
 	void SortIssues();
 
 private:
+	std::string m_HostUrl = "192.168.3.202";
+	int m_Port = 3000;
+	int m_UserId;
+	std::string m_UserName;
+	std::string m_ApiKey;
+
 	HINSTANCE m_hInstance = nullptr;
 	HWND m_hWnd = nullptr;
 	NOTIFYICONDATA m_NotifyIconData = { 0 };
