@@ -89,7 +89,7 @@ void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 
 void RedmineIssuesWidget::Draw(HDC hdc) {
 	DrawTitle(hdc);
-	NewDrawIssuesList(hdc);
+	DrawIssuesList(hdc);
 }
 
 void RedmineIssuesWidget::DrawTitle(HDC hdc) {
@@ -105,6 +105,203 @@ void RedmineIssuesWidget::DrawTitle(HDC hdc) {
 	DrawTextW(hdc, m_TitleText, -1, &m_TitleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
 	SelectObject(hdc, hOldFont);
 	DeleteObject(hFont);
+}
+
+void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
+	// Set the background of the issues area
+	HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(87, 192, 252));
+	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
+	DeleteObject(hBackgroundBrush);
+
+	if (m_JsonIssues.empty()) return;
+
+	// Calculate the size and spacing of the cards
+	int margins = 10; // Left and right margins (in px).
+	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - margins * 2;
+	int cardHeight = 72;
+	int cardSpacing = 10; // The spacing between the cards
+	int startY = m_IssuesRect.top + 10 + m_ContentStartYOffset;
+
+	m_TotalContentHeight = (int)m_JsonIssues.size() * (cardHeight + cardSpacing);
+
+	for (size_t i = 0; i < m_JsonIssues.size(); i++) {
+		// Calculate the start y-coordinate of each card
+		int cardY = startY + (int)i * (cardHeight + cardSpacing);
+
+		// Check if the card is within the visible area
+		if (cardY + cardHeight < m_IssuesRect.top || cardY > m_IssuesRect.bottom) {
+			continue; // Not within the visible area, skip the drawing.
+		}
+
+		// Define the rectangular area of the card
+		RECT cardRect = {
+			m_IssuesRect.left + margins,// left
+			cardY,// top
+			m_IssuesRect.left + margins + cardWidth,// right
+			cardY + cardHeight// bottom
+		};
+
+		DrawSingleIssueCard(hdc, m_JsonIssues[i], cardRect);
+	}
+}
+
+void RedmineIssuesWidget::DrawSingleIssueCard(HDC hdc, const json& issue, RECT& cardRect) {
+	// Draw the background of the card
+	HBRUSH hCardBrush = CreateSolidBrush(RGB(255, 255, 255));
+	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hCardBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
+	RoundRect(hdc, cardRect.left, cardRect.top, cardRect.right, cardRect.bottom, 12, 12);
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
+	DeleteObject(hCardBrush);
+	DeleteObject(hBorderPen);
+
+	// Set text properties
+	SetBkMode(hdc, TRANSPARENT);
+
+	// Create font
+	HFONT hBoldFont = CreateFontW(
+		20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hNormalFont = CreateFontW(
+		14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hSmallFont = CreateFontW(
+		12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hBoldFont);
+
+	// Draw the ID and subject
+	SetTextColor(hdc, RGB(70, 130, 180));
+
+	std::string id_str = JsonToString(issue["id"]);
+	std::string subject = JsonToString(issue["subject"]);
+	std::wstring subjectText = L"#" + StringToWString(id_str) + L" " + StringToWString(EncodingConverter::utf8_to_local(subject));
+
+	RECT subjectRect = { cardRect.left + 15, cardRect.top + 12, cardRect.right - 15, cardRect.top + 35 };
+	DrawTextW(hdc, subjectText.c_str(), -1, &subjectRect, DT_LEFT | DT_SINGLELINE);
+
+	// 绘制进度条
+	DrawProgressBar(hdc, issue, cardRect);
+
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hBoldFont);
+	DeleteObject(hNormalFont);
+	DeleteObject(hSmallFont);
+}
+
+void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const json& issue, RECT& cardRect) {
+	int actualProgress = 0;
+	std::string done_ratio = JsonToString(issue["done_ratio"]);
+
+	try {
+		if (!done_ratio.empty() && done_ratio != "None") {
+			actualProgress = std::stoi(done_ratio);
+		}
+	}
+	catch (const std::exception&) {
+		actualProgress = 0;
+	}
+
+	// 进度条位置和尺寸
+	int margins = 15;
+	int barWidth = cardRect.right - cardRect.left - margins * 2 - 48;
+	int barHeight = 16;
+	int barX = cardRect.left + margins;
+	int barY = cardRect.bottom - barHeight - 12;
+
+	// 绘制进度条背景
+	HBRUSH hBgBrush = CreateSolidBrush(RGB(240, 240, 240));
+	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBgBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
+	Rectangle(hdc, barX, barY, barX + barWidth, barY + barHeight);
+
+	// 获取开始日期和截止日期
+	std::string start_date = JsonToString(issue["start_date"]);
+	std::string due_date = JsonToString(issue["due_date"]);
+
+	if (!start_date.empty() && start_date != "None" &&
+		!due_date.empty() && due_date != "None")
+	{
+		SYSTEMTIME startDate = { 0 };
+		sscanf_s(start_date.c_str(), "%hu-%hu-%hu", &startDate.wYear, &startDate.wMonth, &startDate.wDay);
+
+		SYSTEMTIME dueDate = { 0 };
+		sscanf_s(due_date.c_str(), "%hu-%hu-%hu", &dueDate.wYear, &dueDate.wMonth, &dueDate.wDay);
+
+		SYSTEMTIME currentDate;
+		GetLocalTime(&currentDate);
+
+		// 将 SYSTEMTIME 转换为 FILETIME 以便计算
+		FILETIME ftStart, ftDue, ftCurrent;
+		SystemTimeToFileTime(&startDate, &ftStart);
+		SystemTimeToFileTime(&dueDate, &ftDue);
+		SystemTimeToFileTime(&currentDate, &ftCurrent);
+
+		// 将 FILETIME 转换为 ULARGE_INTEGER 进行数值计算
+		ULARGE_INTEGER ullStart = { 0 };
+		ullStart.LowPart = ftStart.dwLowDateTime;
+		ullStart.HighPart = ftStart.dwHighDateTime;
+
+		ULARGE_INTEGER ullDue = { 0 };
+		ullDue.LowPart = ftDue.dwLowDateTime;
+		ullDue.HighPart = ftDue.dwHighDateTime;
+
+		ULARGE_INTEGER ullCurrent = { 0 };
+		ullCurrent.LowPart = ftCurrent.dwLowDateTime;
+		ullCurrent.HighPart = ftCurrent.dwHighDateTime;
+
+		int theoreticalProgress;
+
+		if (ullCurrent.QuadPart <= ullStart.QuadPart || ullDue.QuadPart <= ullStart.QuadPart) {
+			theoreticalProgress = 0;
+		}
+		else {
+			theoreticalProgress = (ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart);
+			theoreticalProgress = min(theoreticalProgress, 100);
+		}
+
+		// 绘制理论进度（红色）
+		HBRUSH hTheoreticalBrush = CreateSolidBrush(RGB(255, 100, 100));
+		SelectObject(hdc, hTheoreticalBrush);
+		Rectangle(hdc, barX, barY, barX + barWidth * theoreticalProgress / 100, barY + barHeight);
+		DeleteObject(hTheoreticalBrush);
+	}
+
+	// 绘制实际进度（绿色）
+	int actualWidth = (barWidth * actualProgress) / 100;
+	HBRUSH hActualBrush = CreateSolidBrush(RGB(50, 205, 50));
+	SelectObject(hdc, hActualBrush);
+	Rectangle(hdc, barX, barY, barX + actualWidth, barY + barHeight);
+
+	// 绘制进度文本
+	SetBkMode(hdc, TRANSPARENT);
+	SetTextColor(hdc, RGB(100, 100, 100));
+	HFONT hSmallFont = CreateFontW(
+		barHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hSmallFont);
+	std::wstring progressText = std::to_wstring(actualProgress) + L"% 完成";
+	RECT textRect = { barX + barWidth + 10, barY - 2, barX + barWidth + 150, barY + barHeight + 2 };
+	DrawTextW(hdc, progressText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hActualBrush);
+	DeleteObject(hBgBrush);
+	DeleteObject(hBorderPen);
+	DeleteObject(hSmallFont);
 }
 
 
@@ -410,215 +607,4 @@ void RedmineIssuesWidget::testrequest() {
 	for (const auto& issue : m_JsonIssues) {
 		//std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
 	}
-}
-
-
-std::string json_to_string(const json& j) {
-	if (j.is_string()) {
-		return j;
-	}
-	else if (j.is_null()) {
-		return "";
-	}
-	else {
-		return j.dump();
-	}
-}
-
-
-void RedmineIssuesWidget::NewDrawIssuesList(HDC hdc) {
-	// Set the background of the issues area
-	HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(87, 192, 252));
-	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
-	DeleteObject(hBackgroundBrush);
-
-	if (m_JsonIssues.empty()) return;
-
-	// Calculate the size and spacing of the cards
-	int margins = 10; // Left and right margins (in px).
-	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - margins * 2;
-	int cardHeight = 72;
-	int cardSpacing = 10; // The spacing between the cards
-	int startY = m_IssuesRect.top + 10 + m_ContentStartYOffset;
-
-	m_TotalContentHeight = (int)m_JsonIssues.size() * (cardHeight + cardSpacing);
-
-	for (size_t i = 0; i < m_JsonIssues.size(); i++) {
-		// Calculate the start y-coordinate of each card
-		int cardY = startY + (int)i * (cardHeight + cardSpacing);
-
-		// Check if the card is within the visible area
-		if (cardY + cardHeight < m_IssuesRect.top || cardY > m_IssuesRect.bottom) {
-			continue; // Not within the visible area, skip the drawing.
-		}
-
-		// Define the rectangular area of the card
-		RECT cardRect = {
-			m_IssuesRect.left + margins,// left
-			cardY,// top
-			m_IssuesRect.left + margins + cardWidth,// right
-			cardY + cardHeight// bottom
-		};
-
-		NewDrawSingleIssueCard(hdc, m_JsonIssues[i], cardRect);
-	}
-}
-
-void RedmineIssuesWidget::NewDrawSingleIssueCard(HDC hdc, const json& issue, RECT& cardRect) {
-	// Draw the background of the card
-	HBRUSH hCardBrush = CreateSolidBrush(RGB(255, 255, 255));
-	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
-	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hCardBrush);
-	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
-	RoundRect(hdc, cardRect.left, cardRect.top, cardRect.right, cardRect.bottom, 12, 12);
-	SelectObject(hdc, hOldBrush);
-	SelectObject(hdc, hOldPen);
-	DeleteObject(hCardBrush);
-	DeleteObject(hBorderPen);
-
-	// Set text properties
-	SetBkMode(hdc, TRANSPARENT);
-
-	// Create font
-	HFONT hBoldFont = CreateFontW(
-		20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
-	);
-	HFONT hNormalFont = CreateFontW(
-		14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
-	);
-	HFONT hSmallFont = CreateFontW(
-		12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
-	);
-	HFONT hOldFont = (HFONT)SelectObject(hdc, hBoldFont);
-
-	// Draw the ID and subject
-	SetTextColor(hdc, RGB(70, 130, 180));
-
-	std::string id_str = json_to_string(issue["id"]);
-	std::string subject = json_to_string(issue["subject"]);
-	std::wstring subjectText = L"#" + StringToWString(id_str) + L" " + StringToWString(EncodingConverter::utf8_to_local(subject));
-
-	RECT subjectRect = { cardRect.left + 15, cardRect.top + 12, cardRect.right - 15, cardRect.top + 35 };
-	DrawTextW(hdc, subjectText.c_str(), -1, &subjectRect, DT_LEFT | DT_SINGLELINE);
-
-	// 绘制进度条
-	NewDrawProgressBar(hdc, issue, cardRect);
-
-	SelectObject(hdc, hOldFont);
-	DeleteObject(hBoldFont);
-	DeleteObject(hNormalFont);
-	DeleteObject(hSmallFont);
-}
-
-void RedmineIssuesWidget::NewDrawProgressBar(HDC hdc, const json& issue, RECT& cardRect) {
-	int actualProgress = 0;
-	std::string done_ratio = json_to_string(issue["done_ratio"]);
-
-	try {
-		if (!done_ratio.empty() && done_ratio != "None") {
-			actualProgress = std::stoi(done_ratio);
-		}
-	}
-	catch (const std::exception&) {
-		actualProgress = 0;
-	}
-
-	// 进度条位置和尺寸
-	int margins = 15;
-	int barWidth = cardRect.right - cardRect.left - margins * 2 - 48;
-	int barHeight = 16;
-	int barX = cardRect.left + margins;
-	int barY = cardRect.bottom - barHeight - 12;
-
-	// 绘制进度条背景
-	HBRUSH hBgBrush = CreateSolidBrush(RGB(240, 240, 240));
-	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
-	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBgBrush);
-	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
-	Rectangle(hdc, barX, barY, barX + barWidth, barY + barHeight);
-
-	// 获取开始日期和截止日期
-	std::string start_date = json_to_string(issue["start_date"]);
-	std::string due_date = json_to_string(issue["due_date"]);
-
-	if (!start_date.empty() && start_date != "None" &&
-		!due_date.empty() && due_date != "None")
-	{
-		SYSTEMTIME startDate = { 0 };
-		sscanf_s(start_date.c_str(), "%hu-%hu-%hu", &startDate.wYear, &startDate.wMonth, &startDate.wDay);
-
-		SYSTEMTIME dueDate = { 0 };
-		sscanf_s(due_date.c_str(), "%hu-%hu-%hu", &dueDate.wYear, &dueDate.wMonth, &dueDate.wDay);
-
-		SYSTEMTIME currentDate;
-		GetLocalTime(&currentDate);
-
-		// 将 SYSTEMTIME 转换为 FILETIME 以便计算
-		FILETIME ftStart, ftDue, ftCurrent;
-		SystemTimeToFileTime(&startDate, &ftStart);
-		SystemTimeToFileTime(&dueDate, &ftDue);
-		SystemTimeToFileTime(&currentDate, &ftCurrent);
-
-		// 将 FILETIME 转换为 ULARGE_INTEGER 进行数值计算
-		ULARGE_INTEGER ullStart = { 0 };
-		ullStart.LowPart = ftStart.dwLowDateTime;
-		ullStart.HighPart = ftStart.dwHighDateTime;
-
-		ULARGE_INTEGER ullDue = { 0 };
-		ullDue.LowPart = ftDue.dwLowDateTime;
-		ullDue.HighPart = ftDue.dwHighDateTime;
-
-		ULARGE_INTEGER ullCurrent = { 0 };
-		ullCurrent.LowPart = ftCurrent.dwLowDateTime;
-		ullCurrent.HighPart = ftCurrent.dwHighDateTime;
-
-		int theoreticalProgress;
-
-		if (ullCurrent.QuadPart <= ullStart.QuadPart || ullDue.QuadPart <= ullStart.QuadPart) {
-			theoreticalProgress = 0;
-		}
-		else {
-			theoreticalProgress = (ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart);
-			theoreticalProgress = min(theoreticalProgress, 100);
-		}
-
-		// 绘制理论进度（红色）
-		HBRUSH hTheoreticalBrush = CreateSolidBrush(RGB(255, 100, 100));
-		SelectObject(hdc, hTheoreticalBrush);
-		Rectangle(hdc, barX, barY, barX + barWidth * theoreticalProgress / 100, barY + barHeight);
-		DeleteObject(hTheoreticalBrush);
-	}
-
-	// 绘制实际进度（绿色）
-	int actualWidth = (barWidth * actualProgress) / 100;
-	HBRUSH hActualBrush = CreateSolidBrush(RGB(50, 205, 50));
-	SelectObject(hdc, hActualBrush);
-	Rectangle(hdc, barX, barY, barX + actualWidth, barY + barHeight);
-
-	// 绘制进度文本
-	SetBkMode(hdc, TRANSPARENT);
-	SetTextColor(hdc, RGB(100, 100, 100));
-	HFONT hSmallFont = CreateFontW(
-		barHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
-	);
-	HFONT hOldFont = (HFONT)SelectObject(hdc, hSmallFont);
-	std::wstring progressText = std::to_wstring(actualProgress) + L"% 完成";
-	RECT textRect = { barX + barWidth + 10, barY - 2, barX + barWidth + 150, barY + barHeight + 2 };
-	DrawTextW(hdc, progressText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-
-	SelectObject(hdc, hOldBrush);
-	SelectObject(hdc, hOldPen);
-	SelectObject(hdc, hOldFont);
-	DeleteObject(hActualBrush);
-	DeleteObject(hBgBrush);
-	DeleteObject(hBorderPen);
-	DeleteObject(hSmallFont);
 }

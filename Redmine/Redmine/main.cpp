@@ -102,3 +102,15 @@ std::string WCharToString(const wchar_t* wstr) {
 
 	return std::string(buffer.data());
 }
+
+std::string JsonToString(const json& j) {
+	if (j.is_string()) {
+		return j;
+	}
+	else if (j.is_null()) {
+		return "";
+	}
+	else {
+		return j.dump();
+	}
+}

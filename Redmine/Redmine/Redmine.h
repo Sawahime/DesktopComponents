@@ -28,11 +28,11 @@ public:
 	bool InitInstance(int nCmdShow);
 
 	void InitWindowRectArea(HWND hWnd);
-	void Draw(HDC hdc);
-	void DrawTitle(HDC hdc);
-	void NewDrawIssuesList(HDC);
-	void NewDrawSingleIssueCard(HDC, const json&, RECT&);
-	void NewDrawProgressBar(HDC, const json&, RECT&);
+	void Draw(HDC);
+	void DrawTitle(HDC);
+	void DrawIssuesList(HDC);
+	void DrawSingleIssueCard(HDC, const json&, RECT&);
+	void DrawProgressBar(HDC, const json&, RECT&);
 
 	json get_issues(int, int);
 	json get_all_issues(int);
