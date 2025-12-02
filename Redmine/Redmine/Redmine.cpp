@@ -662,8 +662,9 @@ json RedmineIssuesWidget::get_issues(int limit = 100, int offset = 0) {
 		};
 
 		httplib::Headers headers;
-		if (!m_ApiKey.empty()) {
-			headers = { {"X-Redmine-API-Key", m_ApiKey} };
+		std::string apikey = WStringToString(m_User->GetApiKey());
+		if (!apikey.empty()) {
+			headers = { {"X-Redmine-API-Key", apikey} };
 		}
 
 		auto res = cli.Get("/issues.json", params, headers);
@@ -753,9 +754,11 @@ json RedmineIssuesWidget::get_all_issues_by_assignee_name(std::string assignee_n
 }
 
 void RedmineIssuesWidget::testrequest() {
-	SetApiKey("5f46eaf59a601436e657869dfadf68cf416e8602");
-	json issues = get_all_issues_by_assignee_name(EncodingConverter::local_to_utf8("毅 陆"));
-	std::cout << "issues size=" << issues.size() << std::endl;
+	const std::wstring firstName = m_User->GetFirstName();
+	const std::wstring lastName = m_User->GetLastName();
+
+	json issues = get_all_issues_by_assignee_name(EncodingConverter::local_to_utf8(WStringToString(firstName + L" " + lastName)));
+	std::cout << "test issues size=" << issues.size() << std::endl;
 	for (const auto& issue : issues) {
 		std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
 	}

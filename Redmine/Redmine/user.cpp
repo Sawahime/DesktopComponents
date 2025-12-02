@@ -4,6 +4,10 @@
 
 
 bool RedmineUser::CreateUserWindow(HWND hParent) {
+	if (!LoadUserInfo()) {
+		std::cout << __FUNCTION__": " << "LoadUserInfo failed" << std::endl;
+	}
+
 	m_hInstance = GetModuleHandle(NULL);
 
 	WNDCLASSEX wc = {};
@@ -43,7 +47,7 @@ bool RedmineUser::CreateUserWindow(HWND hParent) {
 		m_hWnd, nullptr, m_hInstance, nullptr
 	);
 	m_hFirstNameEdit = CreateWindowW(
-		L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+		L"EDIT", m_FirstName.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
 		editX, currentY, editWidth, editHeight,
 		m_hWnd, nullptr, m_hInstance, nullptr
 	);
@@ -55,7 +59,7 @@ bool RedmineUser::CreateUserWindow(HWND hParent) {
 		m_hWnd, nullptr, m_hInstance, nullptr
 	);
 	m_hLastNameEdit = CreateWindowW(
-		L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+		L"EDIT", m_LastName.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
 		editX, currentY, editWidth, editHeight,
 		m_hWnd, nullptr, m_hInstance, nullptr
 	);
@@ -67,7 +71,7 @@ bool RedmineUser::CreateUserWindow(HWND hParent) {
 		m_hWnd, nullptr, m_hInstance, nullptr
 	);
 	m_hApiKeyEdit = CreateWindowW(
-		L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+		L"EDIT", m_ApiKey.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
 		editX, currentY, editWidth, editHeight,
 		m_hWnd, nullptr, m_hInstance, nullptr
 	);
@@ -101,46 +105,10 @@ LRESULT RedmineUser::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		break;
 	case WM_COMMAND:
 	{
-		WORD cmd = LOWORD(wParam);
-		switch (cmd) {
+		switch (LOWORD(wParam)) {
 		case m_hMenuBtnSave:
-		{
-			if (user) {
-				int len;
-
-				len = GetWindowTextLength(user->m_hFirstNameEdit);
-				if (len > 0) {
-					user->m_firstName.resize(len);
-					GetWindowText(user->m_hFirstNameEdit, &user->m_firstName[0], len + 1);
-				}
-				else {
-					user->m_firstName.clear();
-				}
-
-				len = GetWindowTextLength(user->m_hLastNameEdit);
-				if (len > 0) {
-					user->m_lastName.resize(len);
-					GetWindowText(user->m_hLastNameEdit, &user->m_lastName[0], len + 1);
-				}
-				else {
-					user->m_lastName.clear();
-				}
-
-				len = GetWindowTextLength(user->m_hApiKeyEdit);
-				if (len > 0) {
-					user->m_apiKey.resize(len);
-					GetWindowText(user->m_hApiKeyEdit, &user->m_apiKey[0], len + 1);
-				}
-				else {
-					user->m_apiKey.clear();
-				}
-
-				std::cout << "First Name: " << WStringToString(user->m_firstName) << std::endl;
-				std::cout << "Last Name: " << WStringToString(user->m_lastName) << std::endl;
-				std::cout << "ApiKey: " << WStringToString(user->m_apiKey) << std::endl;
-			}
-		}
-		break;
+			if (user) user->SaveUserInfo();
+			break;
 		}
 	}
 	break;
@@ -169,4 +137,76 @@ void RedmineUser::ShowUserWindow() const {
 
 void RedmineUser::HideUserWindow() const {
 	ShowWindow(m_hWnd, SW_HIDE);
+}
+
+
+bool RedmineUser::SaveUserInfo() {
+	int len;
+
+	len = GetWindowTextLength(m_hFirstNameEdit);
+	if (len > 0) {
+		m_FirstName.resize(len);
+		GetWindowText(m_hFirstNameEdit, &m_FirstName[0], len + 1);
+	}
+	else {
+		m_FirstName.clear();
+	}
+
+	len = GetWindowTextLength(m_hLastNameEdit);
+	if (len > 0) {
+		m_LastName.resize(len);
+		GetWindowText(m_hLastNameEdit, &m_LastName[0], len + 1);
+	}
+	else {
+		m_LastName.clear();
+	}
+
+	len = GetWindowTextLength(m_hApiKeyEdit);
+	if (len > 0) {
+		m_ApiKey.resize(len);
+		GetWindowText(m_hApiKeyEdit, &m_ApiKey[0], len + 1);
+	}
+	else {
+		m_ApiKey.clear();
+	}
+
+	std::string firstName = WStringToString(m_FirstName);
+	std::string lastName = WStringToString(m_LastName);
+	std::string apiKey = WStringToString(m_ApiKey);
+
+	std::cout << "First Name: " << firstName << std::endl;
+	std::cout << "Last Name: " << lastName << std::endl;
+	std::cout << "ApiKey: " << apiKey << std::endl;
+
+	try {
+		std::ofstream file("userdata.dat");
+		if (!file) return false;
+
+		file << firstName << '\n' << lastName << '\n' << apiKey << '\n';
+
+		return file.good();
+	}
+	catch (...) {
+		std::cout << __FUNCTION__": Unknown exception" << std::endl;
+		return false;
+	}
+}
+
+bool RedmineUser::LoadUserInfo() {
+	std::ifstream file("userdata.dat");
+	if (!file) return false;
+
+	std::string firstName, lastName, apiKey;
+	if (std::getline(file, firstName) &&
+		std::getline(file, lastName) &&
+		std::getline(file, apiKey)) {
+
+		m_FirstName = StringToWString(firstName);
+		m_LastName = StringToWString(lastName);
+		m_ApiKey = StringToWString(apiKey);
+
+		return true;
+	}
+
+	return false;
 }

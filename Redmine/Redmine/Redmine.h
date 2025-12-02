@@ -17,21 +17,23 @@ private:
 public:
 	RedmineIssuesWidget(HINSTANCE hInstance) :m_hInstance(hInstance) {
 		FunctionEntryLog;
+
+		m_Logger = new Logger();
+		m_User = new RedmineUser();
+
 		InitMessageFunctionTable();
 		LoadStringW(hInstance, IDS_APP_TITLE, m_szTitle, MAX_LOADSTRING);
 		LoadStringW(hInstance, IDC_REDMINE, m_szWindowClass, MAX_LOADSTRING);
 		InitializePython();
-
-		m_Logger = new Logger();
-		m_User = new RedmineUser();
 	}
 
 	~RedmineIssuesWidget() {
 		FunctionEntryLog;
-		FinallizePython();
 
 		if (m_User) delete m_User;
 		if (m_Logger) delete m_Logger;
+
+		FinallizePython();
 	}
 
 	void InitMessageFunctionTable();
@@ -61,9 +63,6 @@ public:
 	bool DeleteUserInfo(const std::wstring&);
 
 public:// Setter and Getter
-	void SetUserId(const int& id) { m_UserId = id; }
-	void SetUserName(const std::string& name) { m_UserName = name; }
-	void SetApiKey(const std::string& api_key) { m_ApiKey = api_key; }
 	void SetWindowHandle(HWND hWnd) { m_hWnd = hWnd; }
 	HWND GetWindowHandle() const { return m_hWnd; }
 
@@ -90,9 +89,6 @@ private:
 private:
 	std::string m_HostUrl = "192.168.3.202";
 	int m_Port = 3000;
-	int m_UserId;
-	std::string m_UserName;
-	std::string m_ApiKey;
 
 	HINSTANCE m_hInstance = nullptr;
 

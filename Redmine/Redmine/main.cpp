@@ -73,7 +73,6 @@ std::wstring StringToWString(const std::string& str) {
 	return wstr;
 }
 
-
 std::string WStringToString(const std::wstring& wstr) {
 	if (wstr.empty()) return std::string();
 
@@ -87,7 +86,6 @@ std::string WStringToString(const std::wstring& wstr) {
 
 	return result;
 }
-
 
 std::string WCharToString(const wchar_t* wstr) {
 	if (wstr == nullptr) {
