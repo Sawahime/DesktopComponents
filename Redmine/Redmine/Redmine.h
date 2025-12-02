@@ -3,17 +3,6 @@
 constexpr auto MAX_LOADSTRING = 100;
 
 class RedmineIssuesWidget {
-private:
-	typedef struct _ISSUES_INFO {
-		std::string id;
-		std::string subject;
-		std::string status;
-		std::string priority;
-		std::string done_ratio;
-		std::string start_date;
-		std::string due_date;
-	}ISSUES_INFO, * PISSUES_INFO;
-
 public:
 	RedmineIssuesWidget(HINSTANCE hInstance) :m_hInstance(hInstance) {
 		FunctionEntryLog;
@@ -24,7 +13,6 @@ public:
 		InitMessageFunctionTable();
 		LoadStringW(hInstance, IDS_APP_TITLE, m_szTitle, MAX_LOADSTRING);
 		LoadStringW(hInstance, IDC_REDMINE, m_szWindowClass, MAX_LOADSTRING);
-		InitializePython();
 	}
 
 	~RedmineIssuesWidget() {
@@ -32,8 +20,6 @@ public:
 
 		if (m_User) delete m_User;
 		if (m_Logger) delete m_Logger;
-
-		FinallizePython();
 	}
 
 	void InitMessageFunctionTable();
@@ -44,16 +30,9 @@ public:
 	void InitWindowRectArea(HWND hWnd);
 	void Draw(HDC hdc);
 	void DrawTitle(HDC hdc);
-	void DrawIssuesList(HDC hdc);
-	void DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect);
-	void DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect);
 	void NewDrawIssuesList(HDC);
 	void NewDrawSingleIssueCard(HDC, const json&, RECT&);
 	void NewDrawProgressBar(HDC, const json&, RECT&);
-
-	bool InitializePython();
-	void FinallizePython();
-	void RequestIssues();
 
 	json get_issues(int, int);
 	json get_all_issues(int);
@@ -81,9 +60,6 @@ private:
 	void DeInitNotifyIconData();
 	void HandleMouseWheel(int delta);
 
-	std::string ParsePyDictValueByKey(PyObject* dict, const char* key);
-	void SortIssues();
-
 private:
 	std::string m_HostUrl = "192.168.3.202";
 	int m_Port = 3000;
@@ -100,9 +76,6 @@ private:
 	HHOOK m_hMouseHook;
 	BYTE m_Opacity = 128;
 
-	PyObject* m_Module = nullptr;
-	PyObject* m_Func = nullptr;
-	PyObject* m_ArgsTuple = nullptr;
 	UINT_PTR m_TimerId = 1;
 	UINT m_TimerIntervalMs = 30000;
 
@@ -113,7 +86,6 @@ private:
 	RECT m_IssuesRect = { 0 };
 	int m_ContentStartYOffset = 0;// for scroll
 	int m_TotalContentHeight = 0;// for scroll
-	std::vector<ISSUES_INFO> m_IssuesList;
 	json m_JsonIssues;
 #pragma endregion
 

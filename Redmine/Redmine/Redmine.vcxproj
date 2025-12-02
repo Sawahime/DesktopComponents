@@ -158,9 +158,6 @@
     <Image Include="Redmine.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="pyif.py" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
