@@ -29,6 +29,8 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
+#include <wincrypt.h>
+#pragma comment(lib, "crypt32.lib")
 
 #include "resource.h"
 #include "encoding.h"

@@ -1,6 +1,8 @@
 ﻿#include "framework.h"
 #include "logger.h"
+#include "user.h"
 #include "redmine.h"
+#include "main.h"
 
 
 extern RedmineIssuesWidget* g_redmine;
@@ -31,18 +33,10 @@ ATOM RedmineIssuesWidget::RegisterWindowClass() const {
 	wcex.lpszClassName = m_szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-	return RegisterClassExW(&wcex);
+	return RegisterClassEx(&wcex);
 }
 
 bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
-	switch (SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE)) {
-	case S_OK: // The DPI awareness for the app was set successfully
-		break;
-	case E_INVALIDARG: // The value passed in is not valid.
-	case E_ACCESSDENIED: // The DPI awareness is already set, either by calling this API previously or through the application (.exe) manifest.
-		return false;
-	}
-
 	int screenWidth = GetSystemMetrics(SM_CXFULLSCREEN);
 	int screenHeight = GetSystemMetrics(SM_CYFULLSCREEN);
 	int windowWidth = screenWidth / 4;
@@ -72,6 +66,7 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 	m_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 
 	m_Logger->CreateLogWindow(m_hWnd);
+	m_User->CreateUserWindow(m_hWnd);
 
 	RequestIssues();
 	SetTimer(m_hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
@@ -492,16 +487,19 @@ LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wPa
 LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	int wmId = LOWORD(wParam);
 	switch (wmId) {
+	case IDM_LOGIN:
+		g_redmine->m_User->ShowUserWindow();
+		break;
+	case IDM_PREFERENCE:
+		MessageBox(NULL, L"偏好功能尚未实现", L"成功", MB_OK);
+		break;
+	case IDM_SHOWLOG:
+		g_redmine->m_Logger->ShowLogWindow();
+		break;
 	case IDM_ABOUT:
 		DialogBox(g_redmine->m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 		break;
 	case IDM_EXIT:
-		DestroyWindow(hWnd);
-		break;
-	case ID_TRAY_SHOW_LOG:
-		g_redmine->m_Logger->ShowLogWindow();
-		break;
-	case ID_TRAY_EXIT:
 		DestroyWindow(hWnd);
 		break;
 	default:
@@ -532,21 +530,14 @@ LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LP
 }
 
 
-LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) const {
 	if (lParam == WM_RBUTTONUP) {// Right mouse button Up
-		// Create right button menu
-		HMENU hMenu = CreatePopupMenu();
-		InsertMenu(hMenu, 0, MF_BYPOSITION | MF_STRING, ID_TRAY_SHOW_LOG, L"打开日志窗口");
-		InsertMenu(hMenu, 1, MF_BYPOSITION | MF_SEPARATOR, 0, NULL);  // split line
-		InsertMenu(hMenu, 2, MF_BYPOSITION | MF_STRING, ID_TRAY_EXIT, L"退出");
-
 		// Show menu
 		POINT pt;
 		GetCursorPos(&pt);
 		SetForegroundWindow(hWnd);
-		TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);// hold on and wait for click
+		TrackPopupMenu(m_hTrayMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);// hold on and wait for click
 		PostMessage(hWnd, WM_NULL, 0, 0);
-		DestroyMenu(hMenu);
 	}
 	else if (lParam == WM_LBUTTONDBLCLK) {// Left mouse button double-click
 		if (IsWindowVisible(hWnd)) {
@@ -577,6 +568,24 @@ LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wP
 
 
 void RedmineIssuesWidget::InitNotifyIconData(HWND hWnd) {
+	if (!m_hTrayMenu) {
+		m_hTrayMenu = CreatePopupMenu();
+
+		/*
+		 The following groups of flags cannot be used together :
+			MF_BYCOMMAND and MF_BYPOSITION
+			MF_DISABLED, MF_ENABLED, and MF_GRAYED
+			MF_BITMAP, MF_STRING, MF_OWNERDRAW, and MF_SEPARATOR
+			MF_MENUBARBREAK and MF_MENUBREAK
+			MF_CHECKED and MF_UNCHECKED
+		*/
+		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_LOGIN, L"Login");
+		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_PREFERENCE, L"Preference...");
+		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_SHOWLOG, L"Show Logs");
+		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_ABOUT, L"About");
+		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_EXIT, L"Quit");
+	}
+
 	// Init system tray icon
 	m_NotifyIconData.cbSize = sizeof(NOTIFYICONDATA);
 	m_NotifyIconData.hWnd = hWnd;
@@ -591,6 +600,11 @@ void RedmineIssuesWidget::InitNotifyIconData(HWND hWnd) {
 
 void RedmineIssuesWidget::DeInitNotifyIconData() {
 	Shell_NotifyIcon(NIM_DELETE, &m_NotifyIconData);
+
+	if (m_hTrayMenu) {
+		DestroyMenu(m_hTrayMenu);
+		m_hTrayMenu = nullptr;
+	}
 }
 
 void RedmineIssuesWidget::HandleMouseWheel(int delta) {
@@ -613,32 +627,6 @@ void RedmineIssuesWidget::HandleMouseWheel(int delta) {
 	}
 }
 
-std::wstring RedmineIssuesWidget::StringToWString(const std::string& str) {
-	if (str.empty()) return L"";
-
-	int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
-	if (len == 0) return L"";
-
-	std::wstring wstr(len - 1, 0);
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, &wstr[0], len);
-	return wstr;
-}
-
-std::string RedmineIssuesWidget::WCharToString(const wchar_t* wstr) {
-	if (wstr == nullptr) {
-		return "";
-	}
-
-	int bufferSize = WideCharToMultiByte(CP_ACP, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
-	if (bufferSize == 0) {
-		return "";
-	}
-
-	std::vector<char> buffer(bufferSize);
-	WideCharToMultiByte(CP_ACP, 0, wstr, -1, buffer.data(), bufferSize, nullptr, nullptr);
-
-	return std::string(buffer.data());
-}
 
 std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const char* key) {
 	PyObject* pValue = PyDict_GetItemString(dict, key);
@@ -662,7 +650,6 @@ std::string RedmineIssuesWidget::ParsePyDictValueByKey(PyObject* dict, const cha
 	}
 	return "";
 }
-
 
 
 json RedmineIssuesWidget::get_issues(int limit = 100, int offset = 0) {
@@ -772,4 +759,105 @@ void RedmineIssuesWidget::testrequest() {
 	for (const auto& issue : issues) {
 		std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
 	}
+}
+
+
+
+// 加密并保存用户信息到文件
+bool RedmineIssuesWidget::SaveUserInfo(const std::wstring& filename, const std::string& username, const std::string& password) {
+	DATA_BLOB dataIn, dataOut;
+
+	// 组合用户名和密码（用分隔符分开）
+	std::string userData = username + "|||" + password;
+
+	dataIn.pbData = (BYTE*)userData.c_str();
+	dataIn.cbData = (DWORD)userData.length();
+
+	// 使用当前用户凭据加密数据
+	if (CryptProtectData(
+		&dataIn,
+		L"UserCredentials", // 描述文字
+		NULL,              // 可选密码
+		NULL,              // 可选熵
+		NULL,              // 保留
+		0,                 // 标志
+		&dataOut
+	))
+	{
+		// 写入文件
+		HANDLE hFile = CreateFile(filename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hFile != INVALID_HANDLE_VALUE) {
+			DWORD bytesWritten;
+			WriteFile(hFile, dataOut.pbData, dataOut.cbData, &bytesWritten, NULL);
+			CloseHandle(hFile);
+
+			LocalFree(dataOut.pbData);
+			return true;
+		}
+		LocalFree(dataOut.pbData);
+	}
+	return false;
+}
+
+// 从文件读取并解密用户信息
+bool RedmineIssuesWidget::LoadUserInfo(const std::wstring& filename, std::string& username, std::string& password) {
+	HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, 0, NULL,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE) {
+		return false;
+	}
+
+	// 获取文件大小
+	DWORD fileSize = GetFileSize(hFile, NULL);
+	if (fileSize == INVALID_FILE_SIZE) {
+		CloseHandle(hFile);
+		return false;
+	}
+
+	// 读取加密数据
+	std::vector<BYTE> encryptedData(fileSize);
+	DWORD bytesRead;
+	if (!ReadFile(hFile, encryptedData.data(), fileSize, &bytesRead, NULL)) {
+		CloseHandle(hFile);
+		return false;
+	}
+	CloseHandle(hFile);
+
+	DATA_BLOB dataIn, dataOut;
+	dataIn.pbData = encryptedData.data();
+	dataIn.cbData = fileSize;
+
+	// 解密数据
+	if (CryptUnprotectData(&dataIn,
+		NULL,    // 描述文字（可选）
+		NULL,    // 可选密码
+		NULL,    // 可选熵
+		NULL,    // 保留
+		0,       // 标志
+		&dataOut)) {
+
+		// 解析用户名和密码
+		std::string userData((char*)dataOut.pbData, dataOut.cbData);
+		size_t pos = userData.find("|||");
+		if (pos != std::string::npos) {
+			username = userData.substr(0, pos);
+			password = userData.substr(pos + 3);
+
+			LocalFree(dataOut.pbData);
+			return true;
+		}
+		LocalFree(dataOut.pbData);
+	}
+	return false;
+}
+
+// 检查是否已有保存的用户信息
+bool RedmineIssuesWidget::HasSavedUserInfo(const std::wstring& filename) {
+	DWORD attrs = GetFileAttributes(filename.c_str());
+	return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+// 删除保存的用户信息
+bool RedmineIssuesWidget::DeleteUserInfo(const std::wstring& filename) {
+	return DeleteFile(filename.c_str());
 }

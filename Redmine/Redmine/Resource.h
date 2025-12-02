@@ -3,26 +3,30 @@
 // 使用者 Redmine.rc
 
 #define IDS_APP_TITLE			103
-
 #define IDR_MAINFRAME			128
-#define IDD_REDMINE_DIALOG	102
+#define IDD_REDMINE_DIALOG		102
 #define IDD_ABOUTBOX			103
-#define IDM_ABOUT				104
-#define IDM_EXIT				105
-#define IDI_REDMINE			107
+#define IDI_REDMINE				107
 #define IDI_SMALL				108
-#define IDC_REDMINE			109
+#define IDC_REDMINE				109
 #define IDC_MYICON				2
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
 #endif
 
+
+// Message ID
+#define IDM_LOGIN				200
+#define IDM_PREFERENCE			(IDM_LOGIN + 1)
+#define IDM_SHOWLOG				(IDM_PREFERENCE + 1)
+#define IDM_ABOUT				(IDM_SHOWLOG + 1)
+#define IDM_EXIT				(IDM_ABOUT + 1)
+
+
 // 托盘图标资源
 #define IDI_TRAY_ICON           IDI_SMALL
 #define WM_TRAYICON             (WM_USER + 1)
 #define ID_TRAY_ICON            1001
-#define ID_TRAY_SHOW_LOG        1002
-#define ID_TRAY_EXIT            1003
 
 // 新对象的下一组默认值
 //

@@ -21,12 +21,16 @@ public:
 		LoadStringW(hInstance, IDS_APP_TITLE, m_szTitle, MAX_LOADSTRING);
 		LoadStringW(hInstance, IDC_REDMINE, m_szWindowClass, MAX_LOADSTRING);
 		InitializePython();
+
 		m_Logger = new Logger();
+		m_User = new RedmineUser();
 	}
 
 	~RedmineIssuesWidget() {
 		FunctionEntryLog;
 		FinallizePython();
+
+		if (m_User) delete m_User;
 		if (m_Logger) delete m_Logger;
 	}
 
@@ -51,6 +55,11 @@ public:
 	json get_all_issues_by_assignee_name(std::string);
 	void testrequest();
 
+	bool SaveUserInfo(const std::wstring&, const std::string&, const std::string&);
+	bool LoadUserInfo(const std::wstring&, std::string&, std::string&);
+	bool HasSavedUserInfo(const std::wstring&);
+	bool DeleteUserInfo(const std::wstring&);
+
 public:// Setter and Getter
 	void SetUserId(const int& id) { m_UserId = id; }
 	void SetUserName(const std::string& name) { m_UserName = name; }
@@ -68,15 +77,13 @@ private:
 	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtPaint(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTimer(HWND, UINT, WPARAM, LPARAM);
-	LRESULT EvtTrayNotify(HWND, UINT, WPARAM, LPARAM);
+	LRESULT EvtTrayNotify(HWND, UINT, WPARAM, LPARAM) const;
 	LRESULT EvtDestroyWindow(HWND, UINT, WPARAM, LPARAM);
 
 	void InitNotifyIconData(HWND hWnd);
 	void DeInitNotifyIconData();
 	void HandleMouseWheel(int delta);
 
-	std::wstring StringToWString(const std::string& str);
-	std::string WCharToString(const wchar_t* wstr);
 	std::string ParsePyDictValueByKey(PyObject* dict, const char* key);
 	void SortIssues();
 
@@ -88,10 +95,14 @@ private:
 	std::string m_ApiKey;
 
 	HINSTANCE m_hInstance = nullptr;
-	HWND m_hWnd = nullptr;
-	NOTIFYICONDATA m_NotifyIconData = { 0 };
-	WCHAR m_szTitle[MAX_LOADSTRING] = { 0 };
+
 	WCHAR m_szWindowClass[MAX_LOADSTRING] = { 0 };
+	WCHAR m_szTitle[MAX_LOADSTRING] = { 0 };
+	HWND m_hWnd = nullptr;
+
+	NOTIFYICONDATA m_NotifyIconData = { 0 };
+	HMENU m_hTrayMenu = nullptr;
+
 	HHOOK m_hMouseHook;
 	BYTE m_Opacity = 128;
 
@@ -112,4 +123,5 @@ private:
 #pragma endregion
 
 	Logger* m_Logger = nullptr;
+	RedmineUser* m_User = nullptr;
 };

@@ -151,21 +151,16 @@ LRESULT Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 
 	switch (message) {
 	case WM_CREATE: {
-		std::cout << __FUNCTION__": " << "WM_CREATE" << std::endl;
 		LPCREATESTRUCT lpCreateStruct = reinterpret_cast<LPCREATESTRUCT>(lParam);
 		logger = static_cast<Logger*>(lpCreateStruct->lpCreateParams);
-
-		if (logger) logger->ShowLogWindow();
 		break;
 	}
 	case WM_SIZE:
-		std::cout << __FUNCTION__": " << "WM_SIZE" << std::endl;
 		break;
 	case WM_COMMAND:
 		if (logger) logger->EvtCommand(hWnd, message, wParam, lParam);
 		break;
 	case WM_CLOSE:
-		std::cout << __FUNCTION__": " << "WM_CLOSE" << std::endl;
 		if (logger) logger->HideLogWindow();
 		break;
 	default:
