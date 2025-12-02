@@ -47,6 +47,9 @@ public:
 	void DrawIssuesList(HDC hdc);
 	void DrawSingleIssueCard(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect);
 	void DrawProgressBar(HDC hdc, const ISSUES_INFO& issue, RECT& cardRect);
+	void NewDrawIssuesList(HDC);
+	void NewDrawSingleIssueCard(HDC, const json&, RECT&);
+	void NewDrawProgressBar(HDC, const json&, RECT&);
 
 	bool InitializePython();
 	void FinallizePython();
@@ -56,11 +59,6 @@ public:
 	json get_all_issues(int);
 	json get_all_issues_by_assignee_name(std::string);
 	void testrequest();
-
-	bool SaveUserInfo(const std::wstring&, const std::string&, const std::string&);
-	bool LoadUserInfo(const std::wstring&, std::string&, std::string&);
-	bool HasSavedUserInfo(const std::wstring&);
-	bool DeleteUserInfo(const std::wstring&);
 
 public:// Setter and Getter
 	void SetWindowHandle(HWND hWnd) { m_hWnd = hWnd; }
@@ -116,6 +114,7 @@ private:
 	int m_ContentStartYOffset = 0;// for scroll
 	int m_TotalContentHeight = 0;// for scroll
 	std::vector<ISSUES_INFO> m_IssuesList;
+	json m_JsonIssues;
 #pragma endregion
 
 	Logger* m_Logger = nullptr;

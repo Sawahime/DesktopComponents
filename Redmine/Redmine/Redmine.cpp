@@ -63,13 +63,13 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 	SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
 
 	// hook mouse message for scrolling screen
-	m_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
+	//m_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 
 	m_Logger->CreateLogWindow(m_hWnd);
 	m_User->CreateUserWindow(m_hWnd);
 
-	RequestIssues();
-	SetTimer(m_hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
+	//RequestIssues();
+	//SetTimer(m_hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
 
 	testrequest();
 
@@ -90,7 +90,8 @@ void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 
 void RedmineIssuesWidget::Draw(HDC hdc) {
 	DrawTitle(hdc);
-	DrawIssuesList(hdc);
+	//DrawIssuesList(hdc);
+	NewDrawIssuesList(hdc);
 }
 
 void RedmineIssuesWidget::DrawTitle(HDC hdc) {
@@ -757,110 +758,222 @@ void RedmineIssuesWidget::testrequest() {
 	const std::wstring firstName = m_User->GetFirstName();
 	const std::wstring lastName = m_User->GetLastName();
 
-	json issues = get_all_issues_by_assignee_name(EncodingConverter::local_to_utf8(WStringToString(firstName + L" " + lastName)));
-	std::cout << "test issues size=" << issues.size() << std::endl;
-	for (const auto& issue : issues) {
-		std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
+	m_JsonIssues.clear();
+
+	m_JsonIssues = get_all_issues_by_assignee_name(EncodingConverter::local_to_utf8(WStringToString(firstName + L" " + lastName)));
+	std::cout << "test issues size=" << m_JsonIssues.size() << std::endl;
+	for (const auto& issue : m_JsonIssues) {
+		//std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
 	}
 }
 
 
+std::string json_to_string(const json& j) {
+	if (j.is_string()) {
+		return j;
+	}
+	else if (j.is_null()) {
+		return "";
+	}
+	else {
+		return j.dump();
+	}
+}
 
-// 加密并保存用户信息到文件
-bool RedmineIssuesWidget::SaveUserInfo(const std::wstring& filename, const std::string& username, const std::string& password) {
-	DATA_BLOB dataIn, dataOut;
 
-	// 组合用户名和密码（用分隔符分开）
-	std::string userData = username + "|||" + password;
+void RedmineIssuesWidget::NewDrawIssuesList(HDC hdc) {
+	// Set the background of the issues area
+	HBRUSH hBackgroundBrush = CreateSolidBrush(RGB(87, 192, 252));
+	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
+	DeleteObject(hBackgroundBrush);
 
-	dataIn.pbData = (BYTE*)userData.c_str();
-	dataIn.cbData = (DWORD)userData.length();
+	if (m_JsonIssues.empty()) return;
 
-	// 使用当前用户凭据加密数据
-	if (CryptProtectData(
-		&dataIn,
-		L"UserCredentials", // 描述文字
-		NULL,              // 可选密码
-		NULL,              // 可选熵
-		NULL,              // 保留
-		0,                 // 标志
-		&dataOut
-	))
+	// Calculate the size and spacing of the cards
+	int margins = 10; // Left and right margins (in px).
+	int cardWidth = m_IssuesRect.right - m_IssuesRect.left - margins * 2;
+	int cardHeight = 72;
+	int cardSpacing = 10; // The spacing between the cards
+	int startY = m_IssuesRect.top + 10 + m_ContentStartYOffset;
+
+	m_TotalContentHeight = (int)m_JsonIssues.size() * (cardHeight + cardSpacing);
+
+	for (size_t i = 0; i < m_JsonIssues.size(); i++) {
+		// Calculate the start y-coordinate of each card
+		int cardY = startY + (int)i * (cardHeight + cardSpacing);
+
+		// Check if the card is within the visible area
+		if (cardY + cardHeight < m_IssuesRect.top || cardY > m_IssuesRect.bottom) {
+			continue; // Not within the visible area, skip the drawing.
+		}
+
+		// Define the rectangular area of the card
+		RECT cardRect = {
+			m_IssuesRect.left + margins,// left
+			cardY,// top
+			m_IssuesRect.left + margins + cardWidth,// right
+			cardY + cardHeight// bottom
+		};
+
+		NewDrawSingleIssueCard(hdc, m_JsonIssues[i], cardRect);
+	}
+}
+
+void RedmineIssuesWidget::NewDrawSingleIssueCard(HDC hdc, const json& issue, RECT& cardRect) {
+	// Draw the background of the card
+	HBRUSH hCardBrush = CreateSolidBrush(RGB(255, 255, 255));
+	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hCardBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
+	RoundRect(hdc, cardRect.left, cardRect.top, cardRect.right, cardRect.bottom, 12, 12);
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
+	DeleteObject(hCardBrush);
+	DeleteObject(hBorderPen);
+
+	// Set text properties
+	SetBkMode(hdc, TRANSPARENT);
+
+	// Create font
+	HFONT hBoldFont = CreateFontW(
+		20, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hNormalFont = CreateFontW(
+		14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hSmallFont = CreateFontW(
+		12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hBoldFont);
+
+	// Draw the ID and subject
+	SetTextColor(hdc, RGB(70, 130, 180));
+
+	std::string id_str = json_to_string(issue["id"]);
+	std::string subject = json_to_string(issue["subject"]);
+	std::wstring subjectText = L"#" + StringToWString(id_str) + L" " + StringToWString(EncodingConverter::utf8_to_local(subject));
+
+	RECT subjectRect = { cardRect.left + 15, cardRect.top + 12, cardRect.right - 15, cardRect.top + 35 };
+	DrawTextW(hdc, subjectText.c_str(), -1, &subjectRect, DT_LEFT | DT_SINGLELINE);
+
+	// 绘制进度条
+	NewDrawProgressBar(hdc, issue, cardRect);
+
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hBoldFont);
+	DeleteObject(hNormalFont);
+	DeleteObject(hSmallFont);
+}
+
+void RedmineIssuesWidget::NewDrawProgressBar(HDC hdc, const json& issue, RECT& cardRect) {
+	int actualProgress = 0;
+	std::string done_ratio = json_to_string(issue["done_ratio"]);
+
+	try {
+		if (!done_ratio.empty() && done_ratio != "None") {
+			actualProgress = std::stoi(done_ratio);
+		}
+	}
+	catch (const std::exception&) {
+		actualProgress = 0;
+	}
+
+	// 进度条位置和尺寸
+	int margins = 15;
+	int barWidth = cardRect.right - cardRect.left - margins * 2 - 48;
+	int barHeight = 16;
+	int barX = cardRect.left + margins;
+	int barY = cardRect.bottom - barHeight - 12;
+
+	// 绘制进度条背景
+	HBRUSH hBgBrush = CreateSolidBrush(RGB(240, 240, 240));
+	HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+	HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBgBrush);
+	HPEN hOldPen = (HPEN)SelectObject(hdc, hBorderPen);
+	Rectangle(hdc, barX, barY, barX + barWidth, barY + barHeight);
+
+	// 获取开始日期和截止日期
+	std::string start_date = json_to_string(issue["start_date"]);
+	std::string due_date = json_to_string(issue["due_date"]);
+
+	if (!start_date.empty() && start_date != "None" &&
+		!due_date.empty() && due_date != "None")
 	{
-		// 写入文件
-		HANDLE hFile = CreateFile(filename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (hFile != INVALID_HANDLE_VALUE) {
-			DWORD bytesWritten;
-			WriteFile(hFile, dataOut.pbData, dataOut.cbData, &bytesWritten, NULL);
-			CloseHandle(hFile);
+		SYSTEMTIME startDate = { 0 };
+		sscanf_s(start_date.c_str(), "%hu-%hu-%hu", &startDate.wYear, &startDate.wMonth, &startDate.wDay);
 
-			LocalFree(dataOut.pbData);
-			return true;
+		SYSTEMTIME dueDate = { 0 };
+		sscanf_s(due_date.c_str(), "%hu-%hu-%hu", &dueDate.wYear, &dueDate.wMonth, &dueDate.wDay);
+
+		SYSTEMTIME currentDate;
+		GetLocalTime(&currentDate);
+
+		// 将 SYSTEMTIME 转换为 FILETIME 以便计算
+		FILETIME ftStart, ftDue, ftCurrent;
+		SystemTimeToFileTime(&startDate, &ftStart);
+		SystemTimeToFileTime(&dueDate, &ftDue);
+		SystemTimeToFileTime(&currentDate, &ftCurrent);
+
+		// 将 FILETIME 转换为 ULARGE_INTEGER 进行数值计算
+		ULARGE_INTEGER ullStart = { 0 };
+		ullStart.LowPart = ftStart.dwLowDateTime;
+		ullStart.HighPart = ftStart.dwHighDateTime;
+
+		ULARGE_INTEGER ullDue = { 0 };
+		ullDue.LowPart = ftDue.dwLowDateTime;
+		ullDue.HighPart = ftDue.dwHighDateTime;
+
+		ULARGE_INTEGER ullCurrent = { 0 };
+		ullCurrent.LowPart = ftCurrent.dwLowDateTime;
+		ullCurrent.HighPart = ftCurrent.dwHighDateTime;
+
+		int theoreticalProgress;
+
+		if (ullCurrent.QuadPart <= ullStart.QuadPart || ullDue.QuadPart <= ullStart.QuadPart) {
+			theoreticalProgress = 0;
 		}
-		LocalFree(dataOut.pbData);
-	}
-	return false;
-}
-
-// 从文件读取并解密用户信息
-bool RedmineIssuesWidget::LoadUserInfo(const std::wstring& filename, std::string& username, std::string& password) {
-	HANDLE hFile = CreateFile(filename.c_str(), GENERIC_READ, 0, NULL,
-		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFile == INVALID_HANDLE_VALUE) {
-		return false;
-	}
-
-	// 获取文件大小
-	DWORD fileSize = GetFileSize(hFile, NULL);
-	if (fileSize == INVALID_FILE_SIZE) {
-		CloseHandle(hFile);
-		return false;
-	}
-
-	// 读取加密数据
-	std::vector<BYTE> encryptedData(fileSize);
-	DWORD bytesRead;
-	if (!ReadFile(hFile, encryptedData.data(), fileSize, &bytesRead, NULL)) {
-		CloseHandle(hFile);
-		return false;
-	}
-	CloseHandle(hFile);
-
-	DATA_BLOB dataIn, dataOut;
-	dataIn.pbData = encryptedData.data();
-	dataIn.cbData = fileSize;
-
-	// 解密数据
-	if (CryptUnprotectData(&dataIn,
-		NULL,    // 描述文字（可选）
-		NULL,    // 可选密码
-		NULL,    // 可选熵
-		NULL,    // 保留
-		0,       // 标志
-		&dataOut)) {
-
-		// 解析用户名和密码
-		std::string userData((char*)dataOut.pbData, dataOut.cbData);
-		size_t pos = userData.find("|||");
-		if (pos != std::string::npos) {
-			username = userData.substr(0, pos);
-			password = userData.substr(pos + 3);
-
-			LocalFree(dataOut.pbData);
-			return true;
+		else {
+			theoreticalProgress = (ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart);
+			theoreticalProgress = min(theoreticalProgress, 100);
 		}
-		LocalFree(dataOut.pbData);
+
+		// 绘制理论进度（红色）
+		HBRUSH hTheoreticalBrush = CreateSolidBrush(RGB(255, 100, 100));
+		SelectObject(hdc, hTheoreticalBrush);
+		Rectangle(hdc, barX, barY, barX + barWidth * theoreticalProgress / 100, barY + barHeight);
+		DeleteObject(hTheoreticalBrush);
 	}
-	return false;
-}
 
-// 检查是否已有保存的用户信息
-bool RedmineIssuesWidget::HasSavedUserInfo(const std::wstring& filename) {
-	DWORD attrs = GetFileAttributes(filename.c_str());
-	return (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
-}
+	// 绘制实际进度（绿色）
+	int actualWidth = (barWidth * actualProgress) / 100;
+	HBRUSH hActualBrush = CreateSolidBrush(RGB(50, 205, 50));
+	SelectObject(hdc, hActualBrush);
+	Rectangle(hdc, barX, barY, barX + actualWidth, barY + barHeight);
 
-// 删除保存的用户信息
-bool RedmineIssuesWidget::DeleteUserInfo(const std::wstring& filename) {
-	return DeleteFile(filename.c_str());
+	// 绘制进度文本
+	SetBkMode(hdc, TRANSPARENT);
+	SetTextColor(hdc, RGB(100, 100, 100));
+	HFONT hSmallFont = CreateFontW(
+		barHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+		CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI"
+	);
+	HFONT hOldFont = (HFONT)SelectObject(hdc, hSmallFont);
+	std::wstring progressText = std::to_wstring(actualProgress) + L"% 完成";
+	RECT textRect = { barX + barWidth + 10, barY - 2, barX + barWidth + 150, barY + barHeight + 2 };
+	DrawTextW(hdc, progressText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+	SelectObject(hdc, hOldBrush);
+	SelectObject(hdc, hOldPen);
+	SelectObject(hdc, hOldFont);
+	DeleteObject(hActualBrush);
+	DeleteObject(hBgBrush);
+	DeleteObject(hBorderPen);
+	DeleteObject(hSmallFont);
 }
