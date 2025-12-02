@@ -68,9 +68,8 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 	m_Logger->CreateLogWindow(m_hWnd);
 	m_User->CreateUserWindow(m_hWnd);
 
-	SetTimer(m_hWnd, m_TimerId, m_TimerIntervalMs, nullptr);
-
-	testrequest();
+	RequestIssues();
+	SetTimer(m_hWnd, m_RequestTimerId, m_RequestTimerIntervalMs, nullptr);
 
 	ShowWindow(m_hWnd, nCmdShow);
 	UpdateWindow(m_hWnd);
@@ -113,7 +112,7 @@ void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 	FillRect(hdc, &m_IssuesRect, hBackgroundBrush);
 	DeleteObject(hBackgroundBrush);
 
-	if (m_JsonIssues.empty()) return;
+	if (m_Issues.empty()) return;
 
 	// Calculate the size and spacing of the cards
 	int margins = 10; // Left and right margins (in px).
@@ -122,9 +121,9 @@ void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 	int cardSpacing = 10; // The spacing between the cards
 	int startY = m_IssuesRect.top + 10 + m_ContentStartYOffset;
 
-	m_TotalContentHeight = (int)m_JsonIssues.size() * (cardHeight + cardSpacing);
+	m_TotalContentHeight = (int)m_Issues.size() * (cardHeight + cardSpacing);
 
-	for (size_t i = 0; i < m_JsonIssues.size(); i++) {
+	for (size_t i = 0; i < m_Issues.size(); i++) {
 		// Calculate the start y-coordinate of each card
 		int cardY = startY + (int)i * (cardHeight + cardSpacing);
 
@@ -141,7 +140,7 @@ void RedmineIssuesWidget::DrawIssuesList(HDC hdc) {
 			cardY + cardHeight// bottom
 		};
 
-		DrawSingleIssueCard(hdc, m_JsonIssues[i], cardRect);
+		DrawSingleIssueCard(hdc, m_Issues[i], cardRect);
 	}
 }
 
@@ -393,6 +392,9 @@ LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LP
 
 
 LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	if (wParam == m_RequestTimerId) {
+		RequestIssues();
+	}
 	return 0;
 }
 
@@ -425,7 +427,7 @@ LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wP
 
 	g_redmine->m_Logger->DeleteLogWindow();
 
-	KillTimer(hWnd, g_redmine->m_TimerId);
+	KillTimer(hWnd, g_redmine->m_RequestTimerId);
 	Shell_NotifyIcon(NIM_DELETE, &g_redmine->m_NotifyIconData);
 
 	PostQuitMessage(0);
@@ -495,7 +497,7 @@ void RedmineIssuesWidget::HandleMouseWheel(int delta) {
 }
 
 
-json RedmineIssuesWidget::get_issues(int limit = 100, int offset = 0) {
+json RedmineIssuesWidget::HttpGetIssues(int limit = 100, int offset = 0) {
 	try {
 		httplib::Client cli(m_HostUrl, m_Port);
 
@@ -528,12 +530,12 @@ json RedmineIssuesWidget::get_issues(int limit = 100, int offset = 0) {
 	}
 }
 
-json RedmineIssuesWidget::get_all_issues(int limit = 100) {
+json RedmineIssuesWidget::HttpGetAllIssues(int limit = 100) {
 	json all_issues = json::array();
 	int offset = 0;
 
 	while (true) {
-		json ret = get_issues(limit, offset);
+		json ret = HttpGetIssues(limit, offset);
 		if (ret.is_null()) {
 			break;
 		}
@@ -558,13 +560,12 @@ json RedmineIssuesWidget::get_all_issues(int limit = 100) {
 	return all_issues;
 }
 
-json RedmineIssuesWidget::get_all_issues_by_assignee_name(std::string assignee_name) {
+json RedmineIssuesWidget::HttpGetAllIssues(std::string assignee_name) {
 	json all_issues = json::array();
-	int limit = 100;
-	int offset = 0;
+	int limit = 100, offset = 0;
 
 	while (true) {
-		json ret = get_issues(limit, offset);
+		json ret = HttpGetIssues(limit, offset);
 		if (ret.is_null()) {
 			break;
 		}
@@ -596,15 +597,14 @@ json RedmineIssuesWidget::get_all_issues_by_assignee_name(std::string assignee_n
 	return all_issues;
 }
 
-void RedmineIssuesWidget::testrequest() {
+void RedmineIssuesWidget::RequestIssues() {
 	const std::wstring firstName = m_User->GetFirstName();
 	const std::wstring lastName = m_User->GetLastName();
 
-	m_JsonIssues.clear();
-
-	m_JsonIssues = get_all_issues_by_assignee_name(EncodingConverter::local_to_utf8(WStringToString(firstName + L" " + lastName)));
-	std::cout << "test issues size=" << m_JsonIssues.size() << std::endl;
-	for (const auto& issue : m_JsonIssues) {
-		//std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
+	m_Issues.clear();
+	m_Issues = HttpGetAllIssues(EncodingConverter::local_to_utf8(WStringToString(firstName + L" " + lastName)));
+	std::cout << "\nTotally get " << m_Issues.size() << " issue(s): " << std::endl;
+	for (const auto& issue : m_Issues) {
+		std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
 	}
 }

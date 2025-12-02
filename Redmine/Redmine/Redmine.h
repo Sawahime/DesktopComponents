@@ -34,10 +34,10 @@ public:
 	void DrawSingleIssueCard(HDC, const json&, RECT&);
 	void DrawProgressBar(HDC, const json&, RECT&);
 
-	json get_issues(int, int);
-	json get_all_issues(int);
-	json get_all_issues_by_assignee_name(std::string);
-	void testrequest();
+	json HttpGetIssues(int, int);
+	json HttpGetAllIssues(int);
+	json HttpGetAllIssues(std::string);
+	void RequestIssues();
 
 public:// Setter and Getter
 	void SetWindowHandle(HWND hWnd) { m_hWnd = hWnd; }
@@ -76,8 +76,8 @@ private:
 	HHOOK m_hMouseHook;
 	BYTE m_Opacity = 128;
 
-	UINT_PTR m_TimerId = 1;
-	UINT m_TimerIntervalMs = 30000;
+	UINT_PTR m_RequestTimerId = 1;
+	UINT m_RequestTimerIntervalMs = 3000;// [USER_TIMER_MINIMUM, USER_TIMER_MAXIMUM]
 
 #pragma region Layout
 	RECT m_TitleRect = { 0 };
@@ -86,7 +86,7 @@ private:
 	RECT m_IssuesRect = { 0 };
 	int m_ContentStartYOffset = 0;// for scroll
 	int m_TotalContentHeight = 0;// for scroll
-	json m_JsonIssues;
+	json m_Issues;
 #pragma endregion
 
 	Logger* m_Logger = nullptr;
