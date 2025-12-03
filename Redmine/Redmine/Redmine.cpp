@@ -309,23 +309,6 @@ LRESULT RedmineIssuesWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 }
 
 
-INT_PTR RedmineIssuesWidget::About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message) {
-	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
-
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
-		}
-		break;
-	}
-	return (INT_PTR)FALSE;
-}
-
-
 LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	InitNotifyIconData(hWnd);
 	InitRawInput(hWnd);
@@ -359,9 +342,6 @@ LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, 
 		break;
 	case IDM_SHOWLOG:
 		m_Logger->ShowLogWindow();
-		break;
-	case IDM_ABOUT:
-		DialogBox(m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 		break;
 	case IDM_EXIT:
 		DestroyWindow(hWnd);
@@ -480,7 +460,6 @@ void RedmineIssuesWidget::InitNotifyIconData(HWND hWnd) {
 		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_LOGIN, L"Login");
 		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_PREFERENCE, L"Preference...");
 		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_SHOWLOG, L"Show Logs");
-		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_ABOUT, L"About");
 		InsertMenu(m_hTrayMenu, -1, MF_BYPOSITION | MF_STRING, IDM_EXIT, L"Quit");
 	}
 

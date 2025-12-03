@@ -45,7 +45,6 @@ public:// Setter and Getter
 
 private:
 	static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-	static INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 	std::unordered_map<UINT, std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)>> m_MessageTable;
 	LRESULT EvtCreateWindow(HWND, UINT, WPARAM, LPARAM);
