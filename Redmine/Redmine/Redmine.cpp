@@ -430,7 +430,6 @@ LRESULT RedmineIssuesWidget::EvtInput(HWND hwnd, UINT msg, WPARAM wparam, LPARAM
 LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	if (wParam == m_RequestTimerId) {
 		RequestIssues();
-		InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);
 	}
 	return 0;
 }
@@ -649,4 +648,6 @@ void RedmineIssuesWidget::RequestIssues() {
 	for (const auto& issue : m_Issues) {
 		std::cout << issue["id"] << "    " << EncodingConverter::utf8_to_local(issue["subject"]) << std::endl;
 	}
+
+	InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);
 }

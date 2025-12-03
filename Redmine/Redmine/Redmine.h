@@ -79,7 +79,7 @@ private:
 	BYTE m_Opacity = 128;
 
 	UINT_PTR m_RequestTimerId = 1;
-	UINT m_RequestTimerIntervalMs = 3000;// [USER_TIMER_MINIMUM, USER_TIMER_MAXIMUM]
+	UINT m_RequestTimerIntervalMs = 30000;// [USER_TIMER_MINIMUM, USER_TIMER_MAXIMUM]
 
 #pragma region Layout
 	RECT m_TitleRect = { 0 };
