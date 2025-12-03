@@ -263,7 +263,7 @@ void RedmineIssuesWidget::DrawProgressBar(HDC hdc, const json& issue, RECT& card
 			theoreticalProgress = 0;
 		}
 		else {
-			theoreticalProgress = (ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart);
+			theoreticalProgress = static_cast<int>((ullCurrent.QuadPart - ullStart.QuadPart) * 100 / (ullDue.QuadPart - ullStart.QuadPart));
 			theoreticalProgress = min(theoreticalProgress, 100);
 		}
 
@@ -580,7 +580,7 @@ json RedmineIssuesWidget::HttpGetAllIssues(int limit = 100) {
 			break;
 		}
 		else {
-			offset += issues.size();
+			offset += static_cast<int>(issues.size());
 		}
 	}
 
@@ -617,7 +617,7 @@ json RedmineIssuesWidget::HttpGetAllIssues(std::string assignee_name) {
 			break;
 		}
 		else {
-			offset += issues.size();
+			offset += static_cast<int>(issues.size());
 		}
 	}
 
