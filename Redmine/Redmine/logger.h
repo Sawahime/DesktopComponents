@@ -55,7 +55,7 @@ private:
 	void RestoreCout();
 
 	static LRESULT CALLBACK LogWndProc(HWND, UINT, WPARAM, LPARAM);
-	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM) const;
+	LRESULT WndProcCommand(HWND, UINT, WPARAM, LPARAM) const;
 
 	void ClearLog() const;
 	void CopyLog() const;

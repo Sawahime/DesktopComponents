@@ -158,7 +158,7 @@ LRESULT Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	case WM_SIZE:
 		break;
 	case WM_COMMAND:
-		if (logger) logger->EvtCommand(hWnd, message, wParam, lParam);
+		if (logger) logger->WndProcCommand(hWnd, message, wParam, lParam);
 		break;
 	case WM_CLOSE:
 		if (logger) logger->HideLogWindow();
@@ -169,7 +169,7 @@ LRESULT Logger::LogWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	return 0;
 }
 
-LRESULT Logger::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) const {
+LRESULT Logger::WndProcCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) const {
 	WORD cmd = LOWORD(wParam);
 	switch (cmd) {
 	case IDC_BTN_CLEAR:

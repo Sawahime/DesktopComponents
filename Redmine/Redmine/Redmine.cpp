@@ -10,14 +10,14 @@ extern RedmineIssuesWidget* g_redmine;
 
 void RedmineIssuesWidget::InitMessageFunctionTable() {
 #define DefineMsgFunc(message, func) m_MessageTable[message] = [this](HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) { return this->func(hwnd, msg, wparam, lparam); };
-	DefineMsgFunc(WM_CREATE, EvtCreateWindow);
-	DefineMsgFunc(WM_DESTROY, EvtDestroyWindow);		// 发送退出消息并返回
-	DefineMsgFunc(WM_PAINT, EvtPaint);				// 绘制主窗口
-	DefineMsgFunc(WM_INPUT, EvtInput);
-	DefineMsgFunc(WM_COMMAND, EvtCommand);			// 处理应用程序菜单
-	DefineMsgFunc(WM_TIMER, EvtTimer);
-	DefineMsgFunc(WM_TRAYICON, EvtTrayNotify);
-	DefineMsgFunc(WM_USER_INFO_UPDATE, EvtUserInfoUpdate);
+	DefineMsgFunc(WM_CREATE, WndProcCreateWindow);
+	DefineMsgFunc(WM_DESTROY, WndProcDestroyWindow);		// 发送退出消息并返回
+	DefineMsgFunc(WM_PAINT, WndProcPaint);				// 绘制主窗口
+	DefineMsgFunc(WM_INPUT, WndProcInput);
+	DefineMsgFunc(WM_COMMAND, WndProcCommand);			// 处理应用程序菜单
+	DefineMsgFunc(WM_TIMER, WndProcTimer);
+	DefineMsgFunc(WM_TRAYICON, WndProcTrayNotify);
+	DefineMsgFunc(WM_USER_INFO_UPDATE, WndProcUserInfoUpdate);
 }
 
 ATOM RedmineIssuesWidget::RegisterWindowClass() const {
@@ -309,7 +309,7 @@ LRESULT RedmineIssuesWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 }
 
 
-LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::WndProcCreateWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	InitNotifyIconData(hWnd);
 	InitRawInput(hWnd);
 
@@ -317,7 +317,7 @@ LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wPa
 }
 
 
-LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::WndProcDestroyWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	KillTimer(hWnd, m_RequestTimerId);
 
 	m_User->DeleteUserWindow();
@@ -331,7 +331,7 @@ LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wP
 }
 
 
-LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::WndProcCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	int wmId = LOWORD(wParam);
 	switch (wmId) {
 	case IDM_LOGIN:
@@ -354,7 +354,7 @@ LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, 
 }
 
 
-LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::WndProcPaint(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);// Handle to Device Context
 
@@ -367,7 +367,7 @@ LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LP
 }
 
 
-LRESULT RedmineIssuesWidget::EvtInput(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT RedmineIssuesWidget::WndProcInput(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	UINT ret;
 	HRAWINPUT hRawInput = reinterpret_cast<HRAWINPUT>(lparam);
 	std::vector<BYTE> buffer;
@@ -408,7 +408,7 @@ LRESULT RedmineIssuesWidget::EvtInput(HWND hwnd, UINT msg, WPARAM wparam, LPARAM
 }
 
 
-LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::WndProcTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	if (wParam == m_RequestTimerId) {
 		RequestIssues();
 	}
@@ -416,7 +416,7 @@ LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LP
 }
 
 
-LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) const {
+LRESULT RedmineIssuesWidget::WndProcTrayNotify(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) const {
 	if (lParam == WM_RBUTTONUP) {// Right mouse button Up
 		// Show menu
 		POINT pt;
@@ -439,7 +439,7 @@ LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wPara
 }
 
 
-LRESULT RedmineIssuesWidget::EvtUserInfoUpdate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+LRESULT RedmineIssuesWidget::WndProcUserInfoUpdate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	RequestIssues();
 	return 0;
 }
