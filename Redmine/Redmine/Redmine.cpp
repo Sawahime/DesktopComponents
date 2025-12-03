@@ -31,7 +31,7 @@ ATOM RedmineIssuesWidget::RegisterWindowClass() const {
 	wcex.hIcon = LoadIcon(m_hInstance, MAKEINTRESOURCE(IDI_REDMINE));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_REDMINE);
+	wcex.lpszMenuName = nullptr;
 	wcex.lpszClassName = m_szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
@@ -47,7 +47,7 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 	int yPos = 0;
 
 	m_hWnd = CreateWindowW(
-		m_szWindowClass, m_szTitle, WS_OVERLAPPEDWINDOW,
+		m_szWindowClass, m_szTitle, WS_POPUP | WS_VISIBLE,
 		xPos, yPos, windowWidth, windowHeight,
 		nullptr, nullptr, m_hInstance, this
 	);
@@ -79,7 +79,7 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 
 void RedmineIssuesWidget::InitWindowRectArea(HWND hWnd) {
 	GetClientRect(hWnd, &m_TitleRect);
-	m_TitleRect.bottom /= 6;
+	m_TitleRect.bottom /= 8;
 
 	GetClientRect(hWnd, &m_IssuesRect);
 	m_IssuesRect.top = m_TitleRect.bottom;

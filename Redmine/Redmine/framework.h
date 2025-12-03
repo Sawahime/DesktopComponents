@@ -32,6 +32,8 @@ using json = nlohmann::json;
 #include <wincrypt.h>
 #pragma comment(lib, "crypt32.lib")
 #include <hidusage.h>
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
 
 #include "resource.h"
 #include "encoding.h"
