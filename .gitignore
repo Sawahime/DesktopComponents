@@ -10,3 +10,4 @@ x64/
 Debug/
 Release/
 __pycache__/
+*.aps
