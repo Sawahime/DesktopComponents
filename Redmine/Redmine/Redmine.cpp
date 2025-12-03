@@ -352,16 +352,16 @@ LRESULT RedmineIssuesWidget::EvtCommand(HWND hWnd, UINT message, WPARAM wParam, 
 	int wmId = LOWORD(wParam);
 	switch (wmId) {
 	case IDM_LOGIN:
-		g_redmine->m_User->ShowUserWindow();
+		m_User->ShowUserWindow();
 		break;
 	case IDM_PREFERENCE:
 		MessageBox(NULL, L"偏好功能尚未实现", L"成功", MB_OK);
 		break;
 	case IDM_SHOWLOG:
-		g_redmine->m_Logger->ShowLogWindow();
+		m_Logger->ShowLogWindow();
 		break;
 	case IDM_ABOUT:
-		DialogBox(g_redmine->m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+		DialogBox(m_hInstance, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 		break;
 	case IDM_EXIT:
 		DestroyWindow(hWnd);
@@ -378,8 +378,8 @@ LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LP
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);// Handle to Device Context
 
-	g_redmine->InitWindowRectArea(hWnd);
-	g_redmine->Draw(hdc);
+	InitWindowRectArea(hWnd);
+	Draw(hdc);
 
 	EndPaint(hWnd, &ps);
 

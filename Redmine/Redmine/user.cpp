@@ -184,10 +184,6 @@ bool RedmineUser::SaveUserInfo() {
 	std::string lastName = WStringToString(m_LastName);
 	std::string apiKey = WStringToString(m_ApiKey);
 
-	std::cout << "First Name: " << firstName << std::endl;
-	std::cout << "Last Name: " << lastName << std::endl;
-	std::cout << "ApiKey: " << apiKey << std::endl;
-
 	try {
 		std::ofstream file("userdata.dat");
 		if (!file) return false;
