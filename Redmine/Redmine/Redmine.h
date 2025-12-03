@@ -46,18 +46,20 @@ public:// Setter and Getter
 private:
 	static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 	static INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
-	static LRESULT CALLBACK MouseProc(int, WPARAM, LPARAM);
 
 	std::unordered_map<UINT, std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)>> m_MessageTable;
 	LRESULT EvtCreateWindow(HWND, UINT, WPARAM, LPARAM);
-	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM);
+	LRESULT EvtDestroyWindow(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtPaint(HWND, UINT, WPARAM, LPARAM);
+	LRESULT EvtInput(HWND, UINT, WPARAM, LPARAM);
+	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTimer(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTrayNotify(HWND, UINT, WPARAM, LPARAM) const;
-	LRESULT EvtDestroyWindow(HWND, UINT, WPARAM, LPARAM);
 
-	void InitNotifyIconData(HWND hWnd);
+	void InitNotifyIconData(HWND);
 	void DeInitNotifyIconData();
+	void InitRawInput(HWND);
+	void DeInitRawInput();
 	void HandleMouseWheel(int delta);
 
 private:

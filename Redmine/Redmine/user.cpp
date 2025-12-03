@@ -88,6 +88,8 @@ bool RedmineUser::CreateUserWindow(HWND hParent) {
 	return true;
 }
 
+void RedmineUser::DeleteUserWindow() {}
+
 
 LRESULT RedmineUser::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	static RedmineUser* user = nullptr;

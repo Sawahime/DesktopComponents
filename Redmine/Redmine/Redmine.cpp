@@ -13,6 +13,7 @@ void RedmineIssuesWidget::InitMessageFunctionTable() {
 	DefineMsgFunc(WM_CREATE, EvtCreateWindow);
 	DefineMsgFunc(WM_DESTROY, EvtDestroyWindow);		// 发送退出消息并返回
 	DefineMsgFunc(WM_PAINT, EvtPaint);				// 绘制主窗口
+	DefineMsgFunc(WM_INPUT, EvtInput);
 	DefineMsgFunc(WM_COMMAND, EvtCommand);			// 处理应用程序菜单
 	DefineMsgFunc(WM_TIMER, EvtTimer);
 	DefineMsgFunc(WM_TRAYICON, EvtTrayNotify);
@@ -61,9 +62,6 @@ bool RedmineIssuesWidget::InitInstance(int nCmdShow) {
 
 	// Do not show the window in task bar
 	SetWindowLong(m_hWnd, GWL_EXSTYLE, GetWindowLong(m_hWnd, GWL_EXSTYLE) | WS_EX_TOOLWINDOW);
-
-	// hook mouse message for scrolling screen
-	//m_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 
 	m_Logger->CreateLogWindow(m_hWnd);
 	m_User->CreateUserWindow(m_hWnd);
@@ -310,25 +308,6 @@ LRESULT RedmineIssuesWidget::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 }
 
 
-LRESULT RedmineIssuesWidget::MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-	if (nCode >= 0) {
-		if (wParam == WM_MOUSEWHEEL) {
-			MSLLHOOKSTRUCT* p = (MSLLHOOKSTRUCT*)lParam;
-
-			RECT rect;
-			GetWindowRect(g_redmine->m_hWnd, &rect);
-
-			if (PtInRect(&rect, p->pt)) {
-				SHORT delta = HIWORD(p->mouseData);// up=120, down=-120
-				g_redmine->HandleMouseWheel(delta);
-			}
-		}
-	}
-
-	return CallNextHookEx(g_redmine->m_hMouseHook, nCode, wParam, lParam);
-}
-
-
 INT_PTR RedmineIssuesWidget::About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	UNREFERENCED_PARAMETER(lParam);
 	switch (message) {
@@ -347,7 +326,23 @@ INT_PTR RedmineIssuesWidget::About(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
 
 LRESULT RedmineIssuesWidget::EvtCreateWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	g_redmine->InitNotifyIconData(hWnd);
+	InitNotifyIconData(hWnd);
+	InitRawInput(hWnd);
+
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	KillTimer(hWnd, m_RequestTimerId);
+
+	m_User->DeleteUserWindow();
+	m_Logger->DeleteLogWindow();
+
+	DeInitRawInput();
+	DeInitNotifyIconData();
+
+	PostQuitMessage(0);
 	return 0;
 }
 
@@ -391,9 +386,51 @@ LRESULT RedmineIssuesWidget::EvtPaint(HWND hWnd, UINT message, WPARAM wParam, LP
 }
 
 
+LRESULT RedmineIssuesWidget::EvtInput(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	UINT ret;
+	HRAWINPUT hRawInput = reinterpret_cast<HRAWINPUT>(lparam);
+	std::vector<BYTE> buffer;
+	UINT dwSize = 0;
+
+	// first call to get required size
+	ret = GetRawInputData(hRawInput, RID_INPUT, nullptr, &dwSize, sizeof(RAWINPUTHEADER));
+	if (ret == (UINT)-1) {
+		return 0;
+	}
+
+	buffer.resize(dwSize);
+	ret = GetRawInputData(hRawInput, RID_INPUT, buffer.data(), &dwSize, sizeof(RAWINPUTHEADER));
+	if (ret != dwSize) {
+		return 0;
+	}
+
+	PRAWINPUT raw = reinterpret_cast<PRAWINPUT>(buffer.data());
+	if (raw->header.dwType == RIM_TYPEMOUSE) {
+		USHORT flags = raw->data.mouse.usButtonFlags;
+
+		if (flags & RI_MOUSE_WHEEL) {
+			POINT pt;
+			if (!GetCursorPos(&pt)) return 0;
+
+			RECT rc;
+			if (!GetWindowRect(hwnd, &rc)) return 0;
+
+			if (PtInRect(&rc, pt)) {
+				SHORT wheelDelta = static_cast<SHORT>(raw->data.mouse.usButtonData);
+				HandleMouseWheel(wheelDelta);
+				return 0;
+			}
+		}
+	}
+
+	return 0;
+}
+
+
 LRESULT RedmineIssuesWidget::EvtTimer(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	if (wParam == m_RequestTimerId) {
 		RequestIssues();
+		InvalidateRect(m_hWnd, &m_IssuesRect, TRUE);
 	}
 	return 0;
 }
@@ -417,20 +454,6 @@ LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wPara
 			SetForegroundWindow(hWnd);
 		}
 	}
-
-	return 0;
-}
-
-
-LRESULT RedmineIssuesWidget::EvtDestroyWindow(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	std::cout << __FUNCTION__": " << "Entry" << std::endl;
-
-	g_redmine->m_Logger->DeleteLogWindow();
-
-	KillTimer(hWnd, g_redmine->m_RequestTimerId);
-	Shell_NotifyIcon(NIM_DELETE, &g_redmine->m_NotifyIconData);
-
-	PostQuitMessage(0);
 
 	return 0;
 }
@@ -474,6 +497,25 @@ void RedmineIssuesWidget::DeInitNotifyIconData() {
 		DestroyMenu(m_hTrayMenu);
 		m_hTrayMenu = nullptr;
 	}
+}
+
+void RedmineIssuesWidget::InitRawInput(HWND hWnd) {
+	// Register raw input, hWnd will receive WM_INPUT message
+	RAWINPUTDEVICE rid[1] = { 0 };
+	rid[0].usUsagePage = HID_USAGE_PAGE_GENERIC; // Generic desktop controls
+	rid[0].usUsage = HID_USAGE_GENERIC_MOUSE;
+	rid[0].dwFlags = RIDEV_INPUTSINK; // Receive input even when not in focus
+	rid[0].hwndTarget = hWnd;
+	RegisterRawInputDevices(rid, ARRAYSIZE(rid), sizeof(rid));
+}
+
+void RedmineIssuesWidget::DeInitRawInput() {
+	RAWINPUTDEVICE rid[1] = { 0 };
+	rid[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
+	rid[0].usUsage = HID_USAGE_GENERIC_MOUSE;
+	rid[0].dwFlags = RIDEV_REMOVE;
+	rid[0].hwndTarget = nullptr;
+	RegisterRawInputDevices(rid, ARRAYSIZE(rid), sizeof(rid));
 }
 
 void RedmineIssuesWidget::HandleMouseWheel(int delta) {

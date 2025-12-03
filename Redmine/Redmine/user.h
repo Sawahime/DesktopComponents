@@ -5,6 +5,7 @@ class RedmineUser
 {
 public:
 	bool CreateUserWindow(HWND hParent);
+	void DeleteUserWindow();
 	void ShowUserWindow() const;
 	void HideUserWindow() const;
 
