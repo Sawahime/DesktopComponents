@@ -109,7 +109,15 @@ LRESULT RedmineUser::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	{
 		switch (LOWORD(wParam)) {
 		case m_hMenuBtnSave:
-			if (user) user->SaveUserInfo();
+			if (user) {
+				user->SaveUserInfo();
+
+				// update user info to parent window
+				HWND hParent = GetWindow(hWnd, GW_OWNER);
+				if (hParent) {
+					PostMessage(hParent, WM_USER_INFO_UPDATE, wParam, lParam);
+				}
+			}
 			break;
 		}
 	}

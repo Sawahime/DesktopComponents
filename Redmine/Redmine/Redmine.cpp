@@ -17,6 +17,7 @@ void RedmineIssuesWidget::InitMessageFunctionTable() {
 	DefineMsgFunc(WM_COMMAND, EvtCommand);			// 处理应用程序菜单
 	DefineMsgFunc(WM_TIMER, EvtTimer);
 	DefineMsgFunc(WM_TRAYICON, EvtTrayNotify);
+	DefineMsgFunc(WM_USER_INFO_UPDATE, EvtUserInfoUpdate);
 }
 
 ATOM RedmineIssuesWidget::RegisterWindowClass() const {
@@ -454,6 +455,12 @@ LRESULT RedmineIssuesWidget::EvtTrayNotify(HWND hWnd, UINT message, WPARAM wPara
 		}
 	}
 
+	return 0;
+}
+
+
+LRESULT RedmineIssuesWidget::EvtUserInfoUpdate(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	RequestIssues();
 	return 0;
 }
 

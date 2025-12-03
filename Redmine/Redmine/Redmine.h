@@ -55,6 +55,7 @@ private:
 	LRESULT EvtCommand(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTimer(HWND, UINT, WPARAM, LPARAM);
 	LRESULT EvtTrayNotify(HWND, UINT, WPARAM, LPARAM) const;
+	LRESULT EvtUserInfoUpdate(HWND, UINT, WPARAM, LPARAM);
 
 	void InitNotifyIconData(HWND);
 	void DeInitNotifyIconData();
